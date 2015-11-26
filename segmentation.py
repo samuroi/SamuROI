@@ -150,6 +150,8 @@ class DendriteSegmentationTool(object):
             mean = trace.mean()
             mean = 1 if mean == 0. else mean
             #self.traces[patch]     = (trace - self.F) / self.F
+            if numpy.isnan(trace).any() or numpy.isinf(trace).any():
+                trace = numpy.zeros_like(trace)
             self.traces[patch]     = scipy.signal.detrend(trace)#trace#scipy.signal.detrend((trace - mean)/mean)
             self.detections[patch] = find_events(self.traces[patch],
                                                  equal_var = False,
