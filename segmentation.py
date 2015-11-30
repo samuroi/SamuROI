@@ -17,6 +17,18 @@ from dumb.util import find_events
 from dumb.util import baseline
 from dumb.util import deltaF
 
+###  TODO liste
+# - unselect everything
+# - taste für nächstes/vorheriges (OP) segment anzeigen, start from the last selected (if ctrl go to next/previous where any event was detected)
+# - W neues fenter für neue trace
+# - J neue trace in gleichem fenster
+# - A average over the selected traces (start average in new window)
+# - moving average filter für traces (variable fenstergröße)
+# - click on detected event (d) delete event from list
+# - 4 axes -> 1 axes
+# - freehand seletion
+###
+
 
 class DendriteSegmentationTool(object):
 
@@ -79,7 +91,7 @@ class DendriteSegmentationTool(object):
         self.meanimg  = self.axc.imshow(self.meandata,cmap = matplotlib.cm.gray,
                                         interpolation='nearest',vmin = 100,vmax = 300)
 
-        red_alpha_cm = matplotlib.cm.get_cmap('Reds')
+        red_alpha_cm = matplotlib.cm.get_cmap('jet')
         red_alpha_cm._init()
         red_alpha_cm._lut[:,-1] = numpy.linspace(.0, 1.0, red_alpha_cm.N+3)
         #red_alpha_cm.set_under([0,0,0,0])
