@@ -112,8 +112,9 @@ class Branch(object):
             indices.append(index)
             bisect.insort_left(tnew,n*sublength)
 
-        # append the end index for the last segment
-        indices.append(len(tnew))
+        # append the end index for the last segment if last segment size is larger than eps
+        if tnew[-1] - tnew[-2] > 0.01:
+            indices.append(len(tnew))
 
         # interpolate the parametrization
         xn,yn,zn,lcxn,lcyn,rcxn,rcyn = scipy.interpolate.splev(tnew,splinecoeffs)
