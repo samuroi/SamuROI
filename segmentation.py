@@ -16,31 +16,17 @@ import skimage.morphology
 from dumb.util import find_events
 from dumb.util import baseline
 from dumb.util import deltaF
+from dumb.util import bicycle
+from dumb.util import PolyMask
 
-###  TODO liste
-# - unselect everything
-# - taste für nächstes/vorheriges (OP) segment anzeigen, start from the last selected (if ctrl go to next/previous where any event was detected)
-# - W neues fenter für neue trace
-# - J neue trace in gleichem fenster
-# - A average over the selected traces (start average in new window)
-# - moving average filter für traces (variable fenstergröße)
-# - click on detected event (d) delete event from list
-# - 4 axes -> 1 axes
-# - freehand seletion
-###
-#import branch
-##class Branch(branch.Branch):
-#def __init__
+from .branch import Branch
+
+from PyQt4 import QtGui
 
 
 class DendriteSegmentationTool(object):
 
 
-    threshold      = property(_get_threshold, _set_threshold)
-    show_overlay   = property(_get_show_overlay,_set_show_overlay)
-    active_branch  = property(_get_active_branch, _set_active_branch)
-    active_segment = property(_get_active_segment, _set_active_segment)
-    split_length   = property(_get_split_length, _set_split_length)
 
     def _get_split_length(self):
         return self.split_length_widget.value()
@@ -53,7 +39,6 @@ class DendriteSegmentationTool(object):
 
     def _set_threshold(self,t):
         self.__threshold = t
-        #from skimage.filters import sobel
         elevation_map = skimage.filters.sobel(self.meandata)
 
         markers = numpy.zeros_like(self.meandata)
@@ -63,11 +48,11 @@ class DendriteSegmentationTool(object):
 
         overlay = numpy.zeros(shape = self.meandata.shape + (4,),dtype = float)
         overlay[...,3] = segmentation == 1
-        if not hasattr(self,overlayimg):
+        if not hasattr(self,"overlayimg"):
+            print "plotting overlay"
             self.overlayimg = self.aximage.imshow(overlay,interpolation = "nearest")
         else:
             self.overlayimg.set_data(overlay)
-        self.overlayimg
         self.mask = segmentation == 2
         self.fig.canvas.draw()
 
@@ -75,9 +60,12 @@ class DendriteSegmentationTool(object):
         return self.overlayimg.get_visible()
 
     def _set_show_overlay(self, v):
+        # see if value changed
+        b = self.show_overlay
         self.overlayimg.set_visible(v)
-        self.mask_checkbox.setChecked(v)
-
+        self.mask_checkable.setChecked(v)
+        if (b and not v) or (v and not b):
+            self.fig.canvas.draw()
 
     def next_branch(self):
         if len(self.branches) > 0:
@@ -113,7 +101,7 @@ class DendriteSegmentationTool(object):
         self.__active_branch = b
         if b is not None:
             b.artist.set_linewidth(self.thick)
-            b.trace = b.polymask(data,self.mask)
+            b.trace = b.polymask(self.data,self.mask)
             self.axtracebranch.plot(b.trace)
             if hasattr(b,"children"):
                 self.next_segment()
@@ -129,22 +117,23 @@ class DendriteSegmentationTool(object):
         # hide artists of previous branch
         if self.active_segment is not None:
             self.active_segment.artist.set_linewidth(self.thin)
-            self.axtracesegment.lines[0].remove()
+            if len(self.axtracesegment.lines)>0:
+                self.axtracesegment.lines[0].remove()
 
         self.__active_segment = s
         if s is not None:
             s.artist.set_linewidth(self.thick)
-            s.trace = s.polymask(data,self.mask)
+            s.trace = s.polymask(self.data,self.mask)
             self.axtracesegment.plot(s.trace)
         self.fig.canvas.draw()
 
 
     def toggle_overlay(self):
-        self.show_overlay = not show_overlay
+        self.show_overlay = not self.show_overlay
 
     def split_branches(self,length = None):
         for b in self.branches:
-            self.split_branch(b,length,nsemgnets)
+            self.split_branch(b,length)
 
     def split_branch(self,branch = None, length = None):
         """
@@ -173,33 +162,36 @@ class DendriteSegmentationTool(object):
         for child in branch.children:
             child.artist   = Polygon(child.outline, fill = False, color = colorcycle.next(),picker = False,lw = self.thin)
             child.parent   = branch
-            child.polymask = PolyMask(child.outline)
+            child.polymask = child.outline.view(PolyMask)
             self.aximage.add_patch(child.artist)
 
-        self.active_branch = branch
+        self.active_segment = branch.children_cycle.next()
 
-    def split_segment(self,segment,parts = 2):
+    def split_segment(self,segment = None, parts = 2):
         """Split the given segment in to equal parts."""
         segment = self.active_segment if segment is None else segment
 
         # there might be no active segment
         if segment is None:
             return
+        # the parent branch of the segment
+        branch = segment.parent
 
         # remove the old polygon artist
         segment.artist.remove()
 
         # get the index of the old segment in the parents child list
-        i = segment.parent.children.index(segment)
+        i = branch.children.index(segment)
 
         # split and replace the old segment by the two new ones
-        segment.parent.children[i:i+1] = subsegments = segment.split(nsegments = 2)
+        branch.children[i:i+1] = subsegments = segment.split(nsegments = parts)
         for ss in subsegments:
             ss.artist   = Polygon(ss.outline, fill = False, color = self.colorcycle.next(),picker = False,lw = self.thin)
             ss.parent   = segment.parent
-            ss.polymask = PolyMask(ss.outline)
+            ss.polymask = ss.outline.view(PolyMask)
+            self.aximage.add_patch(ss.artist)
 
-        self.active_segment = subsegments[0]
+        self.active_segment = branch.children[i]
 
     def join_segments(self, segment = None, next = True):
         """
@@ -214,17 +206,17 @@ class DendriteSegmentationTool(object):
             return
 
         # the list of childrens of the parent
-        childrens = segment.parent.children
+        children = segment.parent.children
 
         # get the index of the segment in the parents child list
-        i = childrens.index(segment)
+        i = children.index(segment)
 
         # select the slice of the two segments to join
         # this will work event for i = 0,1,len(childrens)-1 and len(childrens)
         s = slice(i,i+2) if next else slice(i-1,i+1)
 
         # we cant join next/previous, if there is no respective other segment
-        if len(childrens[s])<2:
+        if len(children[s])<2:
             return
 
         # remove the old artists
@@ -232,17 +224,47 @@ class DendriteSegmentationTool(object):
             child.artist.remove()
 
         # create joined segment and replace the two old ones in list
-        childrens[s] = joined = childrens[s][0].append(childrens[s][1])
+        joined = children[s][0].append(children[s][1])
+        children[s] = [joined]
 
         # setup the new segment
         joined.artist   = Polygon(joined.outline, fill = False, color = self.colorcycle.next(),picker = False,lw = self.thin)
         joined.parent   = segment.parent
-        joined.polymask = PolyMask(joined.outline)
+        joined.polymask = joined.outline.view(PolyMask)
+        self.aximage.add_patch(joined.artist)
 
         self.active_segment = joined
 
 
-    def __init__(self, data, swc, mean = None):
+    def _get_active_frame(self):
+        if hasattr(self, "_DendriteSegmentationTool__active_frame"):
+            return self.__active_frame
+        return 0
+
+    def _set_active_frame(self,f):
+        if not 0 <= f < self.data.shape[2]:
+            raise Exception("Frame needs to be in range [0,{}]".format(self.data.shape[2]))
+
+        self.__active_frame = f
+
+
+
+    threshold      = property(_get_threshold, _set_threshold)
+    show_overlay   = property(_get_show_overlay,_set_show_overlay)
+    active_branch  = property(_get_active_branch, _set_active_branch)
+    active_segment = property(_get_active_segment, _set_active_segment)
+    split_length   = property(_get_split_length, _set_split_length)
+    active_frame   = property(_get_active_frame, _set_active_frame)
+
+    def __init__(self, data, swc, mean = None, pmin = 10, pmax = 99):
+        """
+            Parameters:
+                data:  The 3D dataset
+                swc:   SWC File that allows looping over branches.
+                mean:  Background image. Defaults to data.mean(axis = -1)
+                pmin,pmax: Percentiles for color range. I.e. the color range for mean and data will start at pmin %
+                           and reach up to pmax %. Defaults to (10,99)
+        """
         self.data = data
         self.swc = swc
         self.meandata = numpy.mean(data,axis = -1) if mean is None else mean
@@ -250,7 +272,7 @@ class DendriteSegmentationTool(object):
         self.fig = plt.figure()
 
         gs = gridspec.GridSpec(2, 1, height_ratios = [.3,.7])
-        self.axraster = plt.subplot(gs[0)
+        self.axraster = plt.subplot(gs[0])
         gsl = gridspec.GridSpecFromSubplotSpec(3, 2, subplot_spec=gs[1])
         self.aximage  = plt.subplot(gsl[:,1])
         self.axtracebranch  = plt.subplot(gsl[0,0])
@@ -262,8 +284,9 @@ class DendriteSegmentationTool(object):
 
         dx = data.shape[1]*0.26666
         dy = data.shape[0]*0.26666
-        self.meanimg  = self.axc.imshow(self.meandata,cmap = matplotlib.cm.gray,
-                                        interpolation='nearest',vmin = 100,vmax = 300)
+        vmin,vmax = numpy.percentile(self.meandata.flatten(), q = [pmin,pmax])
+        self.meanimg  = self.aximage.imshow(self.meandata,cmap = matplotlib.cm.gray,
+                                        interpolation='nearest',vmin = vmin,vmax = vmax)
 
         red_alpha_cm = matplotlib.cm.get_cmap('jet')
         red_alpha_cm._init()
@@ -271,25 +294,26 @@ class DendriteSegmentationTool(object):
         #red_alpha_cm.set_under([0,0,0,0])
 
         #norm = matplotlib.colors.LogNorm(.001,1.)
-        norm = matplotlib.colors.Normalize(vmin = -.1,vmax = .5, clip = True)
-        self.frameimg = self.axc.imshow(self.data[...,0],cmap = red_alpha_cm,norm = norm ,
+        vmin,vmax = numpy.nanpercentile(self.data, q = [pmin,pmax])
+        norm = matplotlib.colors.Normalize(vmin = vmin, vmax = vmax, clip = True)
+        self.frameimg = self.aximage.imshow(self.data[...,0],cmap = red_alpha_cm,norm = norm ,
                                         interpolation='nearest')
 
-        self.fig.colorbar(self.frameimg,ax = self.axc)
+        self.fig.colorbar(self.frameimg,ax = self.aximage)
         self.threshold = 140
 
         self.thick = 5
         self.thin  = 1
 
         self.colors = ['#CC0099','#CC3300','#99CC00','#00FF00','#006600','#999966']
-        self.colorcycle = itertools.cycle(colors)
+        self.colorcycle = itertools.cycle(self.colors)
 
         # get all parts from the swc file that have at least one segment
         self.branches = [Branch(b) for b in swc.branches if len(b) > 1]
         self.branch_cycle = bicycle(self.branches)
         for branch in self.branches:
             branch.artist   = Polygon(branch.outline, fill = False, color = self.colorcycle.next(),picker = False,lw = self.thin)
-            branch.polymask = PolyMask(branch.outline)
+            branch.polymask = branch.outline.view(PolyMask)
             self.aximage.add_patch(branch.artist)
         self.next_branch()
 
@@ -299,50 +323,52 @@ class DendriteSegmentationTool(object):
         #self.fig.canvas.mpl_connect('key_press_event', self.onkey)
 
         def exception_proxy(func):
-            try:
-                func()
-            except Exception as e:
-                import sys, traceback
-                traceback.print_exc(file=sys.stdout)
-                print e
+            def proxy():
+                try:
+                    func()
+                except Exception as e:
+                    import sys, traceback
+                    traceback.print_exc(file=sys.stdout)
+                    print e
+            return proxy
 
         def add_action(name,func,tooltip):
             action = self.fig.canvas.manager.toolbar.addAction(name)
             action.setToolTip(tooltip)
-            action.connect(exception_proxy(func))
+            action.triggered.connect(exception_proxy(func))
+            return action
 
         self.fig.canvas.manager.toolbar.addSeparator()
 
         # ============ BRANCH AND SEGMENT NAVIGATION =================
-        add_action("<<",self.next_branch,"Select next branch.")
-        add_action(">>",self.previous_branch,"Select previous branch.")
-        add_action("<",self.next_segment,"Select next segment.")
-        add_action("<",self.previous_segment,"Select previous segment.")
+        add_action("<<",self.previous_branch,"Select previous branch.")
+        add_action(">>",self.next_branch,"Select next branch.")
+        add_action("<",self.next_segment,"Select previous segment.")
+        add_action(">",self.previous_segment,"Select next segment.")
         self.fig.canvas.manager.toolbar.addSeparator()
 
         # ============ BRANCH SPLITTING              =================
-        self.fig.canvas.manager.toolbar.addWidget(PyQt4.QLabel("Split:"))
-        add_action("branch", self.split_branch, "Split selected branch.")
-        add_action("all",self.split_branches,"Split all branches.")
+        add_action("split\nbranch", self.split_branch, "Split selected branch.")
+        add_action("split\nall",self.split_branches,"Split all branches.")
         self.split_length_widget = QtGui.QSpinBox(value = 10)
+        self.split_length_widget.setToolTip("Choose the spliting length.")
         self.fig.canvas.manager.toolbar.addWidget(self.split_length_widget)
         self.fig.canvas.manager.toolbar.addSeparator()
 
         # ============ SEGMENT MERGE AND SPLIT       =================
-        self.fig.canvas.manager.toolbar.addWidget(PyQt4.QLabel("Segment:"))
+        self.fig.canvas.manager.toolbar.addWidget(QtGui.QLabel("Segment:"))
         add_action("1/2", self.split_segment, "Split selected segment in two equal parts.")
         add_action("<+",lambda : self.join_segments(next = False), "Merge selected segment with preceeding segment.")
         add_action("+>",lambda : self.join_segments(next = True), "Merge selected segment with next segment.")
         self.fig.canvas.manager.toolbar.addSeparator()
 
         # ============ MASK AND THRESHOLD            =================
-        self.fig.canvas.manager.toolbar.addWidget(PyQt4.QLabel("Mask:"))
-        self.mask_checkbox = QtGui.QCheckBox(checked = True)
-        self.fig.canvas.manager.toolbar.addWidget(self.mask_checkbox)
+        self.mask_checkable = add_action("Mask", self.toggle_overlay, "Toggle the mask overlay.")
+        self.mask_checkable.setCheckable(True)
         def incr(): self.threshold = self.threshold*1.05
         def decr(): self.threshold = self.threshold/1.05
-        add_action("-",lambda : decr, "Decrease masking threshold.")
-        add_action("+",lambda : incr, "Increase masking thresold.")
+        add_action("-", decr, "Decrease masking threshold.")
+        add_action("+", incr, "Increase masking thresold.")
         self.fig.canvas.manager.toolbar.addSeparator()
 
     def update_segments(self):
@@ -367,29 +393,7 @@ class DendriteSegmentationTool(object):
                 self.select_segment(patch, ax)
 
             self.fig.canvas.set_window_title(self.fig.canvas.get_window_title() + '.')
-        """
-        # THIS IS SHIT, since it allows overlap of spines with segments, still, i dont know how to cut off
-        # where a segment begins
-        for i, spine in enumerate(self.spines):
-            print "spi",
-            # since we artificially increased swc radii to have more pixels within a segments and the
-            # boundary detected by scikit watershed, correct this increment here to reduce overlap with other
-            # segments
-            c,r = spine.center, spine.radius / 2.5
-            rowslice = slice(max(0,c[1]-r),min(self.data.shape[0],c[1]+r))
-            colslice = slice(max(0,c[0]-r),min(self.data.shape[1],c[0]+r))
-            masked = self.data[rowslice,colslice,:]*self.mask[rowslice,colslice,numpy.newaxis]
-            spine.trace = masked.mean(axis = 0).mean(axis = 0)
-            spine.detection = find_events(spine.trace,
-                                                 equal_var = False,
-                                                 pvalue = 0.05,
-                                                 taumin = 15)
 
-            if spine.onaxes is not None:
-                ax = spine.onaxes
-                self.unselect_segment(spine)
-                self.select_segment(spine, ax)
-        """
         self.fig.canvas.set_window_title('DendriteSegmentationTool')
 
     def redraw_raster(self):
@@ -410,22 +414,7 @@ class DendriteSegmentationTool(object):
                                                              alpha = 0.25, color = color,picker =True)
                 patch.rasterbars.segment = patch
 
-        """
-        for i, spine in enumerate(self.spines):
-            # remove old raster plot
-            if hasattr(spine, "rasterbars"):
-                spine.rasterbars.remove()
 
-            # create new raster plot
-            detection = spine.detection
-            color     = spine.get_edgecolor()
-            xranges   = [[s,e-s] for s,e in zip(detection.starts,detection.ends)]
-            if len(xranges) > 0:
-                spine.rasterbars = self.axraster.broken_barh(xranges = xranges, yrange = (i/4.,1),
-                                                             linewidth = spine.get_linewidth(),
-                                                             alpha = 0.25, color = color,picker =True)
-                spine.rasterbars.spine = spine
-        """
 
     def select_segment(self,segment,targetax = None):
         # check if it is already selected
@@ -547,12 +536,12 @@ class DendriteSegmentationTool(object):
             childartist.parent = artist
             childartist.segment = subsegment
             artist.children.append(childartist)
-            self.axc.add_patch(childartist)
+            self.aximage.add_patch(childartist)
         self.fig.canvas.draw()
 
     def onpick(self,event):
         try:
-            if event.mouseevent.inaxes is self.axc:
+            if event.mouseevent.inaxes is self.aximage:
                 if event.artist in self.segments:
                     self.toggle_segment(event.artist)
             elif event.mouseevent.inaxes is self.axraster:
