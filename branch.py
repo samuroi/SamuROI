@@ -17,6 +17,8 @@ class Branch(object):
     over segments.
     """
 
+    data = property(lambda s: s.__data)
+
     def __init__(self,data):
         if len(data) < 2:
             raise ValueError("Data length is to small, need at least a quadrilateral!")

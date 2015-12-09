@@ -19,9 +19,53 @@ from dumb.util import deltaF
 from dumb.util import bicycle
 from dumb.util import PolyMask
 
-from .branch import Branch
+#from .branch import Branch
+import branch
 
 from PyQt4 import QtGui
+
+class Branch(branch.Branch):
+"""
+Extend the pure branch to also handle artist, trace and children attributes.
+"""
+
+    #children = property(lambda self: return self._children)
+
+    def __init__(self, data, axes, parent = None, **kwargs):
+        super(Branch,self).__init__(data)
+
+        self.axes     = axes
+        self.parent   = parent
+        self.children = []
+        self.polymask = self.outline.view(PolyMask)
+        self.artist   = Polygon(self.outline, **kwargs)
+        if axes is not None:
+            axes.add_artist(self.artist)
+
+
+    def split(self, nsegments = 2, length = None, k = 1, s = 0, colorcycle, **kwargs):
+        """
+            remove the old segment, update list of childrens.
+        """
+
+        for child in self.children:
+            child.artist.remove()
+
+        # split branch and reset childrens
+        self.children = [Branch(child.data,
+                                parent = self,
+                                axes = self.axes,
+                                color = colorcycle.next(),
+                                **kwargs)
+                            for child in branch.split(length = length)]
+        self.children_cycle = bicycle(self.children)
+
+        # draw artists for childrens
+        for child in branch.children:
+            child.artist   = Polygon(self.outline, fill = False, color = colorcycle.next(),picker = False,lw = self.thin)
+            child.parent   = branch
+            child.polymask = child.outline.view(PolyMask)
+            self.aximage.add_patch(child.artist)
 
 
 class DendriteSegmentationTool(object):
@@ -144,27 +188,15 @@ class DendriteSegmentationTool(object):
         """
         branch = self.active_branch if branch is None else branch
         length = self.split_length  if length is None else length
-        if branch is None:
-            return
-        assert(branch in self.branches)
 
-        # if the branch has childrens, remove them
-        if hasattr(branch, "children"):
-            for child in branch.children:
-                child.artist.remove()
-
-        # split branch and reset childrens
-        branch.children = branch.split(length = length)
-        branch.children_cycle = bicycle(branch.children)
-
-        # draw artists for childrens
         colorcycle = itertools.cycle(self.colors)
-        for child in branch.children:
-            child.artist   = Polygon(child.outline, fill = False, color = colorcycle.next(),picker = False,lw = self.thin)
-            child.parent   = branch
-            child.polymask = child.outline.view(PolyMask)
-            self.aximage.add_patch(child.artist)
-
+        if branch is not None and branch in self.branches:
+            branch.split(length = length,
+                            fill = False,
+                            colorcycle = colorcycle,
+                            picker = False,
+                            lw = self.thin
+                          )
         self.active_segment = branch.children_cycle.next()
 
     def split_segment(self,segment = None, parts = 2):
