@@ -19,85 +19,16 @@ from dumb.util import deltaF
 from dumb.util import bicycle
 from dumb.util import PolyMask
 
-#from .branch import Branch
-import branch
+from .branch import Branch
+from .polyroi import PolygonRoi
+from .branchroi import BranchRoi
 
 from PyQt4 import QtGui
 
-class Branch(branch.Branch):
-    """
-    Extend the pure branch to also handle artist, trace and children attributes.
-    """
-
-    #children = property(lambda self: return self._children)
-
-    def __init__(self, data, axes, parent = None, **kwargs):
-        super(Branch,self).__init__(data)
-
-        self.axes     = axes
-        self.parent   = parent
-        self.children = []
-        self.polymask = self.outline.view(PolyMask)
-        self.artist   = Polygon(self.outline, **kwargs)
-        if axes is not None:
-            axes.add_artist(self.artist)
-
-    def __split_parent(self, length, colorcycle, **kwargs):
-        """Only supported if self is a root item."""
-        assert(self.parent is None)
-
-        for child in self.children:
-            child.artist.remove()
-
-        # split branch and reset childrens
-        self.children = [Branch(child.data,
-                                parent = self,
-                                axes = self.axes,
-                                color = colorcycle.next(),
-                                **kwargs)
-                            for child in super(Branch, self).split(length = length)]
-        self.children_cycle = bicycle(self.children)
-
-        # draw artists for childrens
-        for child in self.children:
-            child.artist   = Polygon(self.outline, color = colorcycle.next(), **kwargs)
-            child.parent   = branch
-            child.polymask = child.outline.view(PolyMask)
-            self.axes.add_patch(child.artist)
-
-    def __split_child(self, nsegments, colorcycle, **kwargs):
-        """only supported if self is a child item."""
-        assert(self.parent is not None)
-
-        # remove the old polygon artist
-        self.artist.remove()
-
-        # get the index of the old segment in the parents child list
-        i = self.parent.children.index(segment)
-
-        # split and replace the old segment by the two new ones
-        self.parent.children[i:i+1] = subsegments = super(Branch, self).split(nsegments = nsegments)
-        for ss in subsegments:
-            ss.artist   = Polygon(ss.outline, color = colorcycle.next(), **kwargs)
-            ss.parent   = self.parent
-            ss.polymask = ss.outline.view(PolyMask)
-            self.axes.add_patch(ss.artist)
-
-
-    def split(self, colorcycle, nsegments = 2, length = None, k = 1, s = 0, **kwargs):
-        """
-            splits either the parent branch, or a child segment.
-            Keeps track of the internal structure and drawn artists.
-        """
-        if self.parent is None:
-            assert(length is not None)
-            self.__split_parent(length = length, colorcycle = colorcycle, **kwargs)
-        else:
-            self.__split_child(nsegments = nsegments, colorcycle = colorcycle, **kwargs)
-
 class DendriteSegmentationTool(object):
-
-
+    """
+    The main class that is doing the event handling, organizes the gui and puts together the plot.
+    """
 
     def _get_split_length(self):
         return self.split_length_widget.value()
@@ -148,54 +79,42 @@ class DendriteSegmentationTool(object):
 
     def next_segment(self):
         if self.active_branch is not None:
-            if hasattr(self.active_branch,"children"):
-                if len(self.active_branch.children)>0:
-                    self.active_segment = self.active_branch.children_cycle.next()
+            self.active_branch.next_segment()
+            self.fig.canvas.draw()
 
     def previous_segment(self):
         if self.active_branch is not None:
-            if hasattr(self.active_branch,"children"):
-                if len(self.active_branch.children)>0:
-                    self.active_segment = self.active_branch.children_cycle.prev()
+            self.active_branch.previous_segment()
+            self.fig.canvas.draw()
 
     def _get_active_branch(self):
-        if hasattr(self,"_DendriteSegmentationTool__active_branch"):
-            return self.__active_branch
+        for b in self.branches:
+            if b.active:
+                return b
         return None
 
     def _set_active_branch(self,b):
         # hide artists of previous branch
         if self.active_branch is not None:
-            self.active_branch.artist.set_linewidth(self.thin)
-            self.axtracebranch.lines[0].remove()
+            self.active_branch.active = False
 
-        self.__active_branch = b
         if b is not None:
-            b.artist.set_linewidth(self.thick)
-            b.trace = b.polymask(self.data,self.mask)
-            self.axtracebranch.plot(b.trace)
-            if hasattr(b,"children"):
-                self.next_segment()
-            else:
-                self.fig.canvas.draw()
+            assert(b in self.branches)
+            b.active = True
+        self.fig.canvas.draw()
 
     def _get_active_segment(self):
-        if hasattr(self,"_DendriteSegmentationTool__active_segment"):
-            return self.__active_segment
+        if self.active_branch is not None:
+            return self.active_branch.active_segment
         return None
 
     def _set_active_segment(self,s):
-        # hide artists of previous branch
         if self.active_segment is not None:
-            self.active_segment.artist.set_linewidth(self.thin)
-            if len(self.axtracesegment.lines)>0:
-                self.axtracesegment.lines[0].remove()
-
-        self.__active_segment = s
+            self.active_segment.active = False
+        # hide artists of previous branch
         if s is not None:
-            s.artist.set_linewidth(self.thick)
-            s.trace = s.polymask(self.data,self.mask)
-            self.axtracesegment.plot(s.trace)
+            self.active_branch = s.parent
+            self.active_branch.active_segment = s
         self.fig.canvas.draw()
 
 
@@ -216,15 +135,10 @@ class DendriteSegmentationTool(object):
         branch = self.active_branch if branch is None else branch
         length = self.split_length  if length is None else length
 
-        colorcycle = itertools.cycle(self.colors)
         if branch is not None and branch in self.branches:
-            branch.split(length = length,
-                            fill = False,
-                            colorcycle = colorcycle,
-                            picker = False,
-                            lw = self.thin
-                          )
-        self.active_segment = branch.children_cycle.next()
+            branch.split(length = length)
+        if branch.active:
+            self.active_segment = branch.children[0]
 
     def split_segment(self,segment = None, parts = 2):
         """Split the given segment in to equal parts."""
@@ -237,9 +151,9 @@ class DendriteSegmentationTool(object):
         # get the index of the old segment in the parents child list
         i = segment.parent.children.index(segment)
 
-        segment.split(nsegments = parts, colorcycle = self.colorcycle, picker = False, lw = self.thin, fill = False)
-
-        self.active_segment = segment.parent.children[i]
+        segment.split(nsegments = parts)
+        if segment.parent.active:
+            self.active_segment = segment.parent.children[i]
 
     def join_segments(self, segment = None, next = True):
         """
@@ -253,35 +167,12 @@ class DendriteSegmentationTool(object):
         if segment is None:
             return
 
-        # the list of childrens of the parent
-        children = segment.parent.children
+        # create and retrieve the new segment
+        joined = segment.join(next = next)
 
-        # get the index of the segment in the parents child list
-        i = children.index(segment)
-
-        # select the slice of the two segments to join
-        # this will work event for i = 0,1,len(childrens)-1 and len(childrens)
-        s = slice(i,i+2) if next else slice(i-1,i+1)
-
-        # we cant join next/previous, if there is no respective other segment
-        if len(children[s])<2:
-            return
-
-        # remove the old artists
-        for child in children[s]:
-            child.artist.remove()
-
-        # create joined segment and replace the two old ones in list
-        joined = children[s][0].append(children[s][1])
-        children[s] = [joined]
-
-        # setup the new segment
-        joined.artist   = Polygon(joined.outline, fill = False, color = self.colorcycle.next(),picker = False,lw = self.thin)
-        joined.parent   = segment.parent
-        joined.polymask = joined.outline.view(PolyMask)
-        self.aximage.add_patch(joined.artist)
-
-        self.active_segment = joined
+        # make the new segment active
+        if segment.parent.active:
+            self.active_segment = joined
 
 
     def _get_active_frame(self):
@@ -350,19 +241,16 @@ class DendriteSegmentationTool(object):
         self.fig.colorbar(self.frameimg,ax = self.aximage)
         self.threshold = 140
 
-        self.thick = 5
-        self.thin  = 1
+
 
         self.colors = ['#CC0099','#CC3300','#99CC00','#00FF00','#006600','#999966']
         self.colorcycle = itertools.cycle(self.colors)
 
         # get all parts from the swc file that have at least one segment
-        self.branches = [Branch(b) for b in swc.branches if len(b) > 1]
+        self.branches = [BranchRoi(data = b, axes = self.aximage) for b in swc.branches if len(b) > 1]
         self.branch_cycle = bicycle(self.branches)
-        for branch in self.branches:
-            branch.artist   = Polygon(branch.outline, fill = False, color = self.colorcycle.next(),picker = False,lw = self.thin)
-            branch.polymask = branch.outline.view(PolyMask)
-            self.aximage.add_patch(branch.artist)
+
+        # select first
         self.next_branch()
 
         self.fig.canvas.set_window_title('DendriteSegmentationTool')
