@@ -25,9 +25,9 @@ import branch
 from PyQt4 import QtGui
 
 class Branch(branch.Branch):
-"""
-Extend the pure branch to also handle artist, trace and children attributes.
-"""
+    """
+    Extend the pure branch to also handle artist, trace and children attributes.
+    """
 
     #children = property(lambda self: return self._children)
 
@@ -42,11 +42,9 @@ Extend the pure branch to also handle artist, trace and children attributes.
         if axes is not None:
             axes.add_artist(self.artist)
 
-
-    def split(self, nsegments = 2, length = None, k = 1, s = 0, colorcycle, **kwargs):
-        """
-            remove the old segment, update list of childrens.
-        """
+    def __split_parent(self, length, colorcycle, **kwargs):
+        """Only supported if self is a root item."""
+        assert(self.parent is None)
 
         for child in self.children:
             child.artist.remove()
@@ -57,16 +55,45 @@ Extend the pure branch to also handle artist, trace and children attributes.
                                 axes = self.axes,
                                 color = colorcycle.next(),
                                 **kwargs)
-                            for child in branch.split(length = length)]
+                            for child in super(Branch, self).split(length = length)]
         self.children_cycle = bicycle(self.children)
 
         # draw artists for childrens
-        for child in branch.children:
-            child.artist   = Polygon(self.outline, fill = False, color = colorcycle.next(),picker = False,lw = self.thin)
+        for child in self.children:
+            child.artist   = Polygon(self.outline, color = colorcycle.next(), **kwargs)
             child.parent   = branch
             child.polymask = child.outline.view(PolyMask)
-            self.aximage.add_patch(child.artist)
+            self.axes.add_patch(child.artist)
 
+    def __split_child(self, nsegments, colorcycle, **kwargs):
+        """only supported if self is a child item."""
+        assert(self.parent is not None)
+
+        # remove the old polygon artist
+        self.artist.remove()
+
+        # get the index of the old segment in the parents child list
+        i = self.parent.children.index(segment)
+
+        # split and replace the old segment by the two new ones
+        self.parent.children[i:i+1] = subsegments = super(Branch, self).split(nsegments = nsegments)
+        for ss in subsegments:
+            ss.artist   = Polygon(ss.outline, color = colorcycle.next(), **kwargs)
+            ss.parent   = self.parent
+            ss.polymask = ss.outline.view(PolyMask)
+            self.axes.add_patch(ss.artist)
+
+
+    def split(self, colorcycle, nsegments = 2, length = None, k = 1, s = 0, **kwargs):
+        """
+            splits either the parent branch, or a child segment.
+            Keeps track of the internal structure and drawn artists.
+        """
+        if self.parent is None:
+            assert(length is not None)
+            self.__split_parent(length = length, colorcycle = colorcycle, **kwargs)
+        else:
+            self.__split_child(nsegments = nsegments, colorcycle = colorcycle, **kwargs)
 
 class DendriteSegmentationTool(object):
 
@@ -206,24 +233,13 @@ class DendriteSegmentationTool(object):
         # there might be no active segment
         if segment is None:
             return
-        # the parent branch of the segment
-        branch = segment.parent
-
-        # remove the old polygon artist
-        segment.artist.remove()
 
         # get the index of the old segment in the parents child list
-        i = branch.children.index(segment)
+        i = segment.parent.children.index(segment)
 
-        # split and replace the old segment by the two new ones
-        branch.children[i:i+1] = subsegments = segment.split(nsegments = parts)
-        for ss in subsegments:
-            ss.artist   = Polygon(ss.outline, fill = False, color = self.colorcycle.next(),picker = False,lw = self.thin)
-            ss.parent   = segment.parent
-            ss.polymask = ss.outline.view(PolyMask)
-            self.aximage.add_patch(ss.artist)
+        segment.split(nsegments = parts, colorcycle = self.colorcycle, picker = False, lw = self.thin, fill = False)
 
-        self.active_segment = branch.children[i]
+        self.active_segment = segment.parent.children[i]
 
     def join_segments(self, segment = None, next = True):
         """
