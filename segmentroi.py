@@ -1,28 +1,38 @@
+
+from .branch  import Branch
 from .polyroi import PolygonRoi
 
-from .polyroi import PolygonRoi
 
+class SegmentRoi(Branch,PolygonRoi):
 
-class SegmentRoi(PolygonRoi):
-
-    def __init__(self, data, axes, parent, **kwargs):
-        super(SegmentRoi,self).__init__(data = data, axes = axes, **kwargs)
+    def __init__(self, branch, datasource, axes, parent, **kwargs):
+        Branch.__init__(self, data = branch)
+        PolygonRoi.__init__(self, outline = self.outline, datasource = datasource, axes = axes, **kwargs)
+        #super(SegmentRoi,self).__init__(data = data, axes = axes, **kwargs)
         self.parent = parent
 
     def split(self, nsegments):
         """Split the segment in n equal parts, and adopt the parent branch accordingly."""
 
+        # remember the holdaxes
+        holdaxes = [] + self.holdaxes
+
         # remove the old polygon artist
-        self.artist.remove()
+        self.remove()
 
         # get the index of the old segment in the parents child list
-        i = self.parent.children.index(segment)
+        i = self.parent.children.index(self)
 
         # split segment and convert new branch objects into segments
-        subsegments = [SegmentRoi(data = s.data,
-                               parent = self.parent,
-                               axes = self.axes)
+        subsegments = [SegmentRoi(branch = s.data,
+                                  datasource = self.datasource,
+                                  parent = self.parent,
+                                  axes = self.axes)
                             for s in super(SegmentRoi, self).split(nsegments = nsegments)]
+
+        for ax in holdaxes:
+            for ss in subsegments:
+                ss.toggle_hold(ax)
 
         self.parent.children[i:i+1] = subsegments
 
@@ -47,17 +57,24 @@ class SegmentRoi(PolygonRoi):
         if len(children[s])<2:
             return
 
+        # remember the hold axes
+        holdaxes = set(children[s][0].holdaxes + children[s][1].holdaxes)
+
         # remove the old artists
         for child in children[s]:
-            child.artist.remove()
+            child.remove()
 
         # create joined segment
         joined = children[s][0].append(children[s][1])
         # convert the plain branch into Branch+Artist class
-        joined = SegmentRoi(data = joined.data,
-                         parent = self.parent,
-                         axes = self.axes)
+        joined = SegmentRoi(branch = joined.data,
+                            datasource = self.datasource,
+                            parent = self.parent,
+                            axes = self.axes)
         # replace the two old ones in list
         children[s] = [joined]
+
+        for ax in holdaxes:
+            joined.toggle_hold(ax)
 
         return joined

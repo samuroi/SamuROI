@@ -1,9 +1,11 @@
+
+from .branch import Branch
 from .polyroi import PolygonRoi
 from .segmentroi import SegmentRoi
 
 from dumb.util import bicycle
 
-class BranchRoi(PolygonRoi):
+class BranchRoi(Branch,PolygonRoi):
     """
         Extend the PolygonRoi with children, splitting and segment selection.
     """
@@ -20,19 +22,23 @@ class BranchRoi(PolygonRoi):
         # call the baseclass property setter
         PolygonRoi.active.fset(self,active)
 
-    def __init__(self, data, axes, **kwargs):
-        super(BranchRoi,self).__init__(data, axes = axes, **kwargs)
+    def __init__(self, branch, datasource, axes, **kwargs):
+        Branch.__init__(self, data = branch)
+        PolygonRoi.__init__(self, outline = self.outline, datasource = datasource, axes = axes, **kwargs)
+        #super(BranchRoi,self).__init__(data, axes = axes, **kwargs)
         self.children = []
         self.__active_segment = None
         self.__children_cycle = bicycle(self.children)
 
     def next_segment(self):
         if len(self.children) > 0:
-            self.active_segment = self.__children_cycle.next()
+            return self.__children_cycle.next()
+        return None
 
     def previous_segment(self):
         if len(self.children) > 0:
-            self.active_segment = self.__children_cycle.prev()
+            return self.__children_cycle.prev()
+        return None
 
     @property
     def active_segment(self):
@@ -51,13 +57,12 @@ class BranchRoi(PolygonRoi):
     def split(self, length):
         """Only supported if self is a root item."""
         for child in self.children:
-            child.artist.remove()
+            child.remove()
 
         # split branch and ist insert childrens
         # do list insertion because this will keep the children_cycle updated
-        self.children[:] = [SegmentRoi(child.data,
+        self.children[:] = [SegmentRoi(branch = child.data,
                                 parent = self,
+                                datasource = self.datasource,
                                 axes = self.axes)
                             for child in super(BranchRoi, self).split(length = length)]
-        if self.active:
-            self.active_segment = self.children[0]

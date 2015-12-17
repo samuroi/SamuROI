@@ -59,6 +59,8 @@ class DendriteSegmentationTool(object):
         else:
             self.overlayimg.set_data(overlay)
         self.mask = segmentation == 2
+        # force recalculation of traces
+        PolygonRoi.tracecache.clear()
         self.fig.canvas.draw()
 
     @property
@@ -84,12 +86,12 @@ class DendriteSegmentationTool(object):
 
     def next_segment(self):
         if self.active_branch is not None:
-            self.active_branch.next_segment()
+            self.active_segment = self.active_branch.next_segment()
             self.fig.canvas.draw()
 
     def previous_segment(self):
         if self.active_branch is not None:
-            self.active_branch.previous_segment()
+            self.active_segment = self.active_branch.previous_segment()
             self.fig.canvas.draw()
 
     @property
@@ -101,6 +103,8 @@ class DendriteSegmentationTool(object):
 
     @active_branch.setter
     def active_branch(self,b):
+        if self.active_branch is b:
+            return
         # hide artists of previous branch
         if self.active_branch is not None:
             self.active_branch.active = False
@@ -118,24 +122,47 @@ class DendriteSegmentationTool(object):
 
     @active_segment.setter
     def active_segment(self,s):
+        if self.active_segment is s:
+            return
         if self.active_segment is not None:
             self.active_segment.active = False
-        # hide artists of previous branch
         if s is not None:
-            self.active_branch = s.parent
+            if self.active_branch is not s.parent:
+                self.active_branch = s.parent
             self.active_branch.active_segment = s
+
+        # enable/disable hold buttons
+        for btn, axes in self.holdbuttons:
+            btn.setEnabled(s is not None)
+            checked = (s is not None) and (axes in s.holdaxes)
+            btn.setChecked(checked)
+
         self.fig.canvas.draw()
 
     @property
     def active_frame(self):
-        if hasattr(self, "_DendriteSegmentationTool__active_frame"):
-            return self.__active_frame
-        return 0
+        return self.__active_frame
+
     @active_frame.setter
     def active_frame(self,f):
         if not 0 <= f < self.data.shape[2]:
             raise Exception("Frame needs to be in range [0,{}]".format(self.data.shape[2]))
+
         self.__active_frame = f
+        self.frameimg.set_data(self.data[...,f])
+
+        # remove the markers
+        if hasattr(self, "_DendriteSegmentationTool__active_frame_lines"):
+            for l in self.__active_frame_lines:
+                l.remove()
+
+        # redraw the markers
+        self.__active_frame_lines = []
+        for ax in [self.axtraceactive] + self.axtracehold:
+            l = ax.axvline(x = f, color = 'black', lw = 1.)
+            self.__active_frame_lines.append(l)
+
+        self.fig.canvas.draw()
 
     def toggle_overlay(self):
         self.show_overlay = not self.show_overlay
@@ -143,6 +170,7 @@ class DendriteSegmentationTool(object):
     def split_branches(self,length = None):
         for b in self.branches:
             self.split_branch(b,length)
+        self.fig.canvas.draw()
 
     def split_branch(self,branch = None, length = None):
         """
@@ -208,15 +236,27 @@ class DendriteSegmentationTool(object):
 
         self.fig = plt.figure()
 
-        gs = gridspec.GridSpec(2, 1, height_ratios = [.3,.7])
-        self.axraster = plt.subplot(gs[0])
-        gsl = gridspec.GridSpecFromSubplotSpec(3, 2, subplot_spec=gs[1])
-        self.aximage  = plt.subplot(gsl[:,1])
-        self.axtracebranch  = plt.subplot(gsl[0,0])
-        self.axtracesegment = plt.subplot(gsl[1,0])
-        self.axtracemulti   = plt.subplot(gsl[2,0])
+        self.gs = gridspec.GridSpec(2, 1, height_ratios = [.3,.7])
+        self.axraster = plt.subplot(self.gs[0])
+        self.gsl = gridspec.GridSpecFromSubplotSpec(4, 2, subplot_spec=self.gs[1], height_ratios = [.6,1,1,1], hspace = 0.075)
+        self.aximage  = plt.subplot(self.gsl[:,1])
+        self.axtraceactive  = plt.subplot(self.gsl[0,0])
+        self.axhold1 = plt.subplot(self.gsl[1,0])
+        self.axhold2 = plt.subplot(self.gsl[2,0])
+        self.axhold3 = plt.subplot(self.gsl[3,0])
 
-        for ax in [self.axraster,self.axtracebranch,self.axtracesegment,self.axtracemulti]:
+        self.axtracehold = [self.axhold1,self.axhold2,self.axhold3]
+        """ a list with the axes where traces can put on hold"""
+        self.timeaxes = [self.axtraceactive] + self.axtracehold + [self.axraster]
+        """ a list with all axes that have time as x axis"""
+
+        # disable labels in the hold axes two timeaxes and label the active axes
+        self.axtraceactive.tick_params(axis = 'x', labelbottom = False, labeltop = True)
+
+        for ax in self.axtracehold:
+            ax.tick_params(axis = 'x', labelbottom = False)
+
+        for ax in self.timeaxes:
             ax.set_xlim(0,data.shape[-1])
 
         dx = data.shape[1]*0.26666
@@ -237,15 +277,14 @@ class DendriteSegmentationTool(object):
                                         interpolation='nearest')
 
         self.fig.colorbar(self.frameimg,ax = self.aximage)
-        self.threshold = 140
-
-
+        self.threshold    = 140
+        self.active_frame = 0
 
         self.colors = ['#CC0099','#CC3300','#99CC00','#00FF00','#006600','#999966']
         self.colorcycle = itertools.cycle(self.colors)
 
         # get all parts from the swc file that have at least one segment
-        self.branches = [BranchRoi(data = b, axes = self.aximage) for b in swc.branches if len(b) > 1]
+        self.branches = [BranchRoi(branch = b, datasource = self, axes = self) for b in swc.branches if len(b) > 1]
         self.branch_cycle = bicycle(self.branches)
 
         # select first
@@ -254,7 +293,7 @@ class DendriteSegmentationTool(object):
         self.fig.canvas.set_window_title('DendriteSegmentationTool')
         #self.fig.canvas.mpl_disconnect(self.fig.canvas.manager.key_press_handler_id)
         #self.fig.canvas.mpl_connect('pick_event', self.onpick)
-        #self.fig.canvas.mpl_connect('key_press_event', self.onkey)
+        self.fig.canvas.mpl_connect('key_press_event', self.onkey)
 
         def exception_proxy(func):
             def proxy():
@@ -266,10 +305,12 @@ class DendriteSegmentationTool(object):
                     print e
             return proxy
 
-        def add_action(name,func,tooltip):
+        def add_action(name,func,tooltip, **kwargs):
             action = self.fig.canvas.manager.toolbar.addAction(name)
             action.setToolTip(tooltip)
             action.triggered.connect(exception_proxy(func))
+            for key,value in kwargs.iteritems():
+                action.setProperty(key,value)
             return action
 
         self.fig.canvas.manager.toolbar.addSeparator()
@@ -297,13 +338,26 @@ class DendriteSegmentationTool(object):
         self.fig.canvas.manager.toolbar.addSeparator()
 
         # ============ MASK AND THRESHOLD            =================
-        self.mask_checkable = add_action("Mask", self.toggle_overlay, "Toggle the mask overlay.")
-        self.mask_checkable.setCheckable(True)
+        self.mask_checkable = add_action("Mask", self.toggle_overlay, "Toggle the mask overlay.", checkable = True)
         def incr(): self.threshold = self.threshold*1.05
         def decr(): self.threshold = self.threshold/1.05
         add_action("-", decr, "Decrease masking threshold.")
         add_action("+", incr, "Increase masking thresold.")
         self.fig.canvas.manager.toolbar.addSeparator()
+
+        # ============ TRACE PLOT CONTROL ====================
+        def hold(ax):
+            def func():
+                if self.active_segment is not None:
+                    self.active_segment.toggle_hold(ax)
+                self.fig.canvas.draw()
+            return func
+        self.fig.canvas.manager.toolbar.addWidget(QtGui.QLabel("Hold traces:"))
+        tooltip =  "Keep the trace of the currently selected segment in one of the hold axes."
+        self.hold1 = add_action("H1", hold(self.axhold1),tooltip, checkable = True, enabled = False)
+        self.hold2 = add_action("H2", hold(self.axhold2),tooltip, checkable = True, enabled = False)
+        self.hold3 = add_action("H3", hold(self.axhold3),tooltip, checkable = True, enabled = False)
+        self.holdbuttons = [(self.hold1, self.axhold1),(self.hold2,self.axhold2),(self.hold3,self.axhold3)]
 
     def update_segments(self):
         self.traces = {}
@@ -419,59 +473,20 @@ class DendriteSegmentationTool(object):
         segment.onaxes = None
         self.fig.canvas.draw()
 
-    def toggle_segment(self,segment):
-        if segment.get_linewidth() == self.thin:
-            self.select_segment(segment)
-        else:
-            self.unselect_segment(segment)
-
     def onkey(self,event):
-        #print event.key
         try:
-            if event.inaxes in self.axeslist and event.key == ' ':
-                t = int(event.xdata)
-                self.frameimg.set_data(self.data[...,t])
-                self.fig.canvas.draw()
+            if event.inaxes in self.timeaxes and event.key == ' ':
+                self.active_frame = int(event.xdata)
             if event.key == '+':
-                self.hide_overlay()
-                self.calc_overlay(self.overlay_threshold*1.05)
-                self.show_overlay()
-                self.fig.canvas.draw()
+                self.threshold = self.threshold*1.05
             if event.key == '-':
-                self.hide_overlay()
-                self.calc_overlay(self.overlay_threshold*0.95)
-                self.show_overlay()
-                self.fig.canvas.draw()
-            if event.key == 'enter':
-                self.update_segments()
-                self.redraw_raster()
-                self.fig.canvas.draw()
+                self.threshold = self.threshold/1.05
             if event.key  == 'm':
                 self.toggle_overlay()
-                self.fig.canvas.draw()
-            if event.key == 'u':
-                pass
-            if event.key == 's':
-                return
         except Exception as e:
             import sys, traceback
             traceback.print_exc(file=sys.stdout)
             print e
-
-    def splitsegment(self,artist):
-        # create two sub polygons from given polygon artist
-        if hasattr(artist,"children"):
-            return
-        artist.children = []
-        segment = artist.segment
-        for subsegment in segment.subsegments:
-            color = self.colorcycle.next()
-            childartist = Polygon(subsegment,fill = False, picker = True,edgecolor=color,lw = 1)
-            childartist.parent = artist
-            childartist.segment = subsegment
-            artist.children.append(childartist)
-            self.aximage.add_patch(childartist)
-        self.fig.canvas.draw()
 
     def onpick(self,event):
         try:
