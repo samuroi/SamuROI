@@ -29,17 +29,20 @@ class DendriteSegmentationTool(object):
     """
     The main class that is doing the event handling, organizes the gui and puts together the plot.
     """
-
-    def _get_split_length(self):
+    @property
+    def split_length(self):
         return self.split_length_widget.value()
 
-    def _set_split_length(self,v):
+    @split_length.setter
+    def split_length(self,v):
         self.split_length_widget.setValue(v)
 
-    def _get_threshold(self):
+    @property
+    def threshold(self):
         return self.__threshold
 
-    def _set_threshold(self,t):
+    @threshold.setter
+    def threshold(self,t):
         self.__threshold = t
         elevation_map = skimage.filters.sobel(self.meandata)
 
@@ -58,10 +61,12 @@ class DendriteSegmentationTool(object):
         self.mask = segmentation == 2
         self.fig.canvas.draw()
 
-    def _get_show_overlay(self):
+    @property
+    def show_overlay(self):
         return self.overlayimg.get_visible()
 
-    def _set_show_overlay(self, v):
+    @show_overlay.setter
+    def show_overlay(self, v):
         # see if value changed
         b = self.show_overlay
         self.overlayimg.set_visible(v)
@@ -87,13 +92,15 @@ class DendriteSegmentationTool(object):
             self.active_branch.previous_segment()
             self.fig.canvas.draw()
 
-    def _get_active_branch(self):
+    @property
+    def active_branch(self):
         for b in self.branches:
             if b.active:
                 return b
         return None
 
-    def _set_active_branch(self,b):
+    @active_branch.setter
+    def active_branch(self,b):
         # hide artists of previous branch
         if self.active_branch is not None:
             self.active_branch.active = False
@@ -103,12 +110,14 @@ class DendriteSegmentationTool(object):
             b.active = True
         self.fig.canvas.draw()
 
-    def _get_active_segment(self):
+    @property
+    def active_segment(self):
         if self.active_branch is not None:
             return self.active_branch.active_segment
         return None
 
-    def _set_active_segment(self,s):
+    @active_segment.setter
+    def active_segment(self,s):
         if self.active_segment is not None:
             self.active_segment.active = False
         # hide artists of previous branch
@@ -117,6 +126,16 @@ class DendriteSegmentationTool(object):
             self.active_branch.active_segment = s
         self.fig.canvas.draw()
 
+    @property
+    def active_frame(self):
+        if hasattr(self, "_DendriteSegmentationTool__active_frame"):
+            return self.__active_frame
+        return 0
+    @active_frame.setter
+    def active_frame(self,f):
+        if not 0 <= f < self.data.shape[2]:
+            raise Exception("Frame needs to be in range [0,{}]".format(self.data.shape[2]))
+        self.__active_frame = f
 
     def toggle_overlay(self):
         self.show_overlay = not self.show_overlay
@@ -173,27 +192,6 @@ class DendriteSegmentationTool(object):
         # make the new segment active
         if segment.parent.active:
             self.active_segment = joined
-
-
-    def _get_active_frame(self):
-        if hasattr(self, "_DendriteSegmentationTool__active_frame"):
-            return self.__active_frame
-        return 0
-
-    def _set_active_frame(self,f):
-        if not 0 <= f < self.data.shape[2]:
-            raise Exception("Frame needs to be in range [0,{}]".format(self.data.shape[2]))
-
-        self.__active_frame = f
-
-
-
-    threshold      = property(_get_threshold, _set_threshold)
-    show_overlay   = property(_get_show_overlay,_set_show_overlay)
-    active_branch  = property(_get_active_branch, _set_active_branch)
-    active_segment = property(_get_active_segment, _set_active_segment)
-    split_length   = property(_get_split_length, _set_split_length)
-    active_frame   = property(_get_active_frame, _set_active_frame)
 
     def __init__(self, data, swc, mean = None, pmin = 10, pmax = 99):
         """
