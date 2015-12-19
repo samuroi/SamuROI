@@ -18,6 +18,7 @@ from dumb.util import baseline
 from dumb.util import deltaF
 from dumb.util import bicycle
 from dumb.util import PolyMask
+from dumb.util import noraise
 
 from .branch import Branch
 from .polyroi import PolygonRoi
@@ -295,20 +296,12 @@ class DendriteSegmentationTool(object):
         #self.fig.canvas.mpl_connect('pick_event', self.onpick)
         self.fig.canvas.mpl_connect('key_press_event', self.onkey)
 
-        def exception_proxy(func):
-            def proxy():
-                try:
-                    func()
-                except Exception as e:
-                    import sys, traceback
-                    traceback.print_exc(file=sys.stdout)
-                    print e
-            return proxy
-
         def add_action(name,func,tooltip, **kwargs):
             action = self.fig.canvas.manager.toolbar.addAction(name)
             action.setToolTip(tooltip)
-            action.triggered.connect(exception_proxy(func))
+            # use dumb.noraise to wrap the function in a try/except block
+            # that will catch everything and print it to stdout
+            action.triggered.connect(noraise(func))
             for key,value in kwargs.iteritems():
                 action.setProperty(key,value)
             return action
@@ -358,6 +351,43 @@ class DendriteSegmentationTool(object):
         self.hold2 = add_action("H2", hold(self.axhold2),tooltip, checkable = True, enabled = False)
         self.hold3 = add_action("H3", hold(self.axhold3),tooltip, checkable = True, enabled = False)
         self.holdbuttons = [(self.hold1, self.axhold1),(self.hold2,self.axhold2),(self.hold3,self.axhold3)]
+        self.fig.canvas.manager.toolbar.addSeparator()
+
+        # ============== FREEHAND SELECTION ===================
+        self.freehand_mode = False
+        tooltip = """Change to freehand selection mask creation mode.
+                     next line
+                     foobar
+                  """
+        self.freehand_creator = PolyRoiCreator(axes = self.aximage,
+                                  canvas = self.fig.canvas,
+                                  update = self.fig.canvas.draw,
+                                  notify = self.add_freehand_poly, enabled = False )
+        self.freehand = add_action("FreeHand", self.toggle_freehand_mode, tooltip, checkable = True)
+
+
+    @property
+    def active_poly(self):
+        if not hasattr(self,"polyrois"):
+            return None
+        for p in self.polyrois:
+            if p.active:
+                return p
+        return None
+
+    @active_poly.setter
+    def active_poly(self,p):
+        if self.active_poly
+
+    def toggle_freehand_mode(self):
+        self.freehand_creator.enabled = not self.freehand_creator.enabled
+
+    def add_freehand_poly(self,x,y):
+        if not hasattr(self, "polyrois"):
+            self.polyrois = []
+        polyroi = PolygonRoi(outline = numpy.array([x,y]).T,
+                             axes = self, datasource = self)
+        self.polyrois.append()
 
     def update_segments(self):
         self.traces = {}
@@ -472,6 +502,8 @@ class DendriteSegmentationTool(object):
 
         segment.onaxes = None
         self.fig.canvas.draw()
+
+    #def onclick()
 
     def onkey(self,event):
         try:
