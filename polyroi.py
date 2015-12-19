@@ -38,7 +38,7 @@ class PolygonRoi(object):
         """
         self.datasource = datasource
         self.axes     = axes
-        self.polymask = self.outline.view(PolyMask)
+        self.polymask = outline.view(PolyMask)
         self.artist   = Polygon(outline, fill = False,
                                 picker = False,
                                 lw  = PolygonRoi.thin,
