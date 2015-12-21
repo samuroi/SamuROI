@@ -10,6 +10,9 @@ class BranchRoi(Branch,PolygonRoi):
         Extend the PolygonRoi with children, splitting and segment selection.
     """
 
+    # override PolygonRoi default thickness for not so thick branches
+    thick = 3
+
     @PolygonRoi.active.setter
     def active(self,active):
         """

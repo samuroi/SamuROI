@@ -61,7 +61,7 @@ class PolyRoiCreator(object):
             return
 
         if self.status is None:
-            line, = self.axes.plot([],[], lw = 3)
+            line, = self.axes.plot([],[], lw = 3,scalex = False, scaley = False)
             self.status = self.Status(x = [], y = [], line = line)
 
         self.status.x.append(event.xdata)
@@ -78,6 +78,6 @@ class PolyRoiCreator(object):
         self.status.y.append(self.status.y[0])
         self.status.line.set_data(self.status.x,self.status.y)
         self.status.line.remove()
-        self.update()
         self.notify(self.status.x, self.status.y)
+        self.update()
         self.status = None

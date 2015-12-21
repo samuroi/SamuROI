@@ -40,10 +40,11 @@ class PolygonRoi(object):
         self.axes     = axes
         self.polymask = outline.view(PolyMask)
         self.artist   = Polygon(outline, fill = False,
-                                picker = False,
+                                picker = True,
                                 lw  = PolygonRoi.thin,
                                 color = PolygonRoi.colorcycle.next(),
                                 **kwargs)
+        self.artist.roi = self
         self.__active = False
 
         self.holdaxes  = []
@@ -66,13 +67,22 @@ class PolygonRoi(object):
             PolygonRoi.tracecache[self] = self.polymask(data = data, mask = mask)
         return PolygonRoi.tracecache[self]
 
+    def relim(self,axes):
+        """recalculate and update the axes limit after adding/removing a line or updating via notify."""
+        axes.relim()
+        axes.autoscale(axis = 'y',tight = True)
+        mi,ma = axes.get_ylim()
+        axes.set_ylim(mi-(ma-mi)*0.1, ma+(ma-mi)*0.1)
+
     def remove(self):
         """remove all artists and traces"""
         self.artist.remove()
         if hasattr(self,"traceline"):
             self.traceline.remove()
-        for line in self.holdlines.values():
+        for axes,line in self.holdlines.iteritems():
             line.remove()
+            # recalculate the ylim for the remaining lines
+            self.relim(axes)
         if self in PolygonRoi.tracecache:
             del PolygonRoi.tracecache[self]
 
@@ -86,9 +96,10 @@ class PolygonRoi(object):
             self.traceline.set_data(x,trace)
 
         # update the holded traces
-        for line in self.holdlines.values():
+        for axes,line in self.holdlines.iteritems():
             x,_ = line.get_data()
             line.set_data(x,self.trace)
+            self.relim(axes)
 
     def toggle_hold(self,ax):
         """
@@ -100,14 +111,19 @@ class PolygonRoi(object):
             self.holdaxes.remove(ax)
         else:
             self.holdaxes.append(ax)
-            line, = ax.plot(self.trace, color = self.color)
+            line, = ax.plot(self.trace, color = self.color, picker = 5)
+            line.roi = self
             self.holdlines[ax] = line
+        # because we have added/removed a line from the holdaxes, we need to relimit the axes
+        self.relim(ax)
         if len(self.holdaxes) > 0:
-            self.artist.set_fill(True)
-            self.artist.set_alpha(0.35)
+            #self.artist.set_fill(True)
+            self.artist.set_linestyle('--')
+            #self.artist.set_alpha(0.35)
         else:
-            self.artist.set_fill(False)
-            self.artist.set_alpha(1)
+            #self.artist.set_fill(False)
+            self.artist.set_linestyle('-')
+            #self.artist.set_alpha(1)
 
     @trace.deleter
     def trace(self):
@@ -128,6 +144,7 @@ class PolygonRoi(object):
                 self.traceline.remove()
                 del self.traceline
             self.artist.set_linewidth(PolygonRoi.thin)
+        self.relim(self.axes.axtraceactive)
         self.__active = active
 
     #active = property(_get_active,_set_active)

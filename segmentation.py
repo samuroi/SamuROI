@@ -23,6 +23,7 @@ from dumb.util import noraise
 from .branch import Branch
 from .polyroi import PolygonRoi
 from .branchroi import BranchRoi
+from .polymaskcreator import PolyRoiCreator
 
 from PyQt4 import QtGui
 
@@ -62,6 +63,17 @@ class DendriteSegmentationTool(object):
         self.mask = segmentation == 2
         # force recalculation of traces
         PolygonRoi.tracecache.clear()
+        # set proper ylimit for axtraceactive and axtracehold
+        for ax in [self.axtraceactive] + self.axtracehold:
+            if len(ax.lines) <= 1: continue # skip axes if it only contains one line (the frame marker)
+            ymin,ymax = 0,0
+            for l in ax.lines:
+                x,y = l.get_data()
+                # filter out the vertical frame marker line
+                if len(x) <= 2: continue
+                ymin = min(numpy.min(y),ymin)
+                ymax = max(numpy.max(y),ymax)
+            ax.set_ylim(ymin*0.95,ymax*1.05)
         self.fig.canvas.draw()
 
     @property
@@ -113,6 +125,9 @@ class DendriteSegmentationTool(object):
         if b is not None:
             assert(b in self.branches)
             b.active = True
+            # disable the freehand poly selection
+            if self.active_poly is not None:
+                self.active_poly = None
         self.fig.canvas.draw()
 
     @property
@@ -291,17 +306,24 @@ class DendriteSegmentationTool(object):
         # select first
         self.next_branch()
 
+        # create storage list for freehand selection polygon rois
+        self.polyrois = []
+        """ The list which stores the freehand rois. Use add_freehand_poly and remove_freehand_poly to modify list."""
+        self.polyroicycle = bicycle(self.polyrois)
+        """ A bi-cycle of the freehand polygon rois."""
+
         self.fig.canvas.set_window_title('DendriteSegmentationTool')
         #self.fig.canvas.mpl_disconnect(self.fig.canvas.manager.key_press_handler_id)
-        #self.fig.canvas.mpl_connect('pick_event', self.onpick)
-        self.fig.canvas.mpl_connect('key_press_event', self.onkey)
+        self.fig.canvas.mpl_connect('pick_event', noraise(self.onpick))
+        self.fig.canvas.mpl_connect('key_press_event', noraise(self.onkey))
 
         def add_action(name,func,tooltip, **kwargs):
             action = self.fig.canvas.manager.toolbar.addAction(name)
             action.setToolTip(tooltip)
             # use dumb.noraise to wrap the function in a try/except block
             # that will catch everything and print it to stdout
-            action.triggered.connect(noraise(func))
+            # also filter away all args and kwargs which might come from the signal invocation
+            action.triggered.connect(noraise(lambda *args, **kwargs: func()))
             for key,value in kwargs.iteritems():
                 action.setProperty(key,value)
             return action
@@ -338,21 +360,6 @@ class DendriteSegmentationTool(object):
         add_action("+", incr, "Increase masking thresold.")
         self.fig.canvas.manager.toolbar.addSeparator()
 
-        # ============ TRACE PLOT CONTROL ====================
-        def hold(ax):
-            def func():
-                if self.active_segment is not None:
-                    self.active_segment.toggle_hold(ax)
-                self.fig.canvas.draw()
-            return func
-        self.fig.canvas.manager.toolbar.addWidget(QtGui.QLabel("Hold traces:"))
-        tooltip =  "Keep the trace of the currently selected segment in one of the hold axes."
-        self.hold1 = add_action("H1", hold(self.axhold1),tooltip, checkable = True, enabled = False)
-        self.hold2 = add_action("H2", hold(self.axhold2),tooltip, checkable = True, enabled = False)
-        self.hold3 = add_action("H3", hold(self.axhold3),tooltip, checkable = True, enabled = False)
-        self.holdbuttons = [(self.hold1, self.axhold1),(self.hold2,self.axhold2),(self.hold3,self.axhold3)]
-        self.fig.canvas.manager.toolbar.addSeparator()
-
         # ============== FREEHAND SELECTION ===================
         self.freehand_mode = False
         tooltip = """Change to freehand selection mask creation mode.
@@ -363,8 +370,34 @@ class DendriteSegmentationTool(object):
                                   canvas = self.fig.canvas,
                                   update = self.fig.canvas.draw,
                                   notify = self.add_freehand_poly, enabled = False )
-        self.freehand = add_action("FreeHand", self.toggle_freehand_mode, tooltip, checkable = True)
+        add_action("FreeHand", self.toggle_freehand_mode, tooltip, checkable = True)
+        add_action("<", self.next_freehand, tooltip)
+        add_action(">", self.previous_freehand, tooltip)
+        add_action("del", self.remove_freehand_poly, tooltip)
+        self.fig.canvas.manager.toolbar.addSeparator()
 
+        # ============ TRACE PLOT CONTROL ====================
+        def hold(ax):
+            def func():
+                print self.active_roi
+                if self.active_roi is not None:
+                    self.active_roi.toggle_hold(ax)
+                self.fig.canvas.draw()
+            return func
+        self.fig.canvas.manager.toolbar.addWidget(QtGui.QLabel("Hold traces:"))
+        tooltip =  "Keep the trace of the currently selected segment in one of the hold axes."
+        self.hold1 = add_action("H1", hold(self.axhold1),tooltip, checkable = True, enabled = False)
+        self.hold2 = add_action("H2", hold(self.axhold2),tooltip, checkable = True, enabled = False)
+        self.hold3 = add_action("H3", hold(self.axhold3),tooltip, checkable = True, enabled = False)
+        self.holdbuttons = [(self.hold1, self.axhold1),(self.hold2,self.axhold2),(self.hold3,self.axhold3)]
+        self.fig.canvas.manager.toolbar.addSeparator()
+
+    @property
+    def active_roi(self):
+        """Return either the active segment, or the active polyroi, or None if there is neither of both."""
+        if self.active_segment is not None:
+            return self.active_segment
+        return self.active_poly
 
     @property
     def active_poly(self):
@@ -377,158 +410,88 @@ class DendriteSegmentationTool(object):
 
     @active_poly.setter
     def active_poly(self,p):
-        if self.active_poly
+        bevore = self.active_poly
+        if self.active_poly is not None:
+            self.active_poly.active = False
+        if p is not None:
+            assert(p in self.polyrois)
+            p.active = True
+            self.active_branch = None
+
+        # enable/disable hold buttons
+        for btn, axes in self.holdbuttons:
+            btn.setEnabled(p is not None)
+            checked = (p is not None) and (axes in p.holdaxes)
+            btn.setChecked(checked)
+
+        if bevore is not p:
+            self.fig.canvas.draw()
+
+
+    def next_freehand(self):
+        self.active_poly = self.polyroicycle.next()
+
+    def previous_freehand(self):
+        self.active_poly = self.polyroicycle.prev()
 
     def toggle_freehand_mode(self):
         self.freehand_creator.enabled = not self.freehand_creator.enabled
 
     def add_freehand_poly(self,x,y):
-        if not hasattr(self, "polyrois"):
-            self.polyrois = []
         polyroi = PolygonRoi(outline = numpy.array([x,y]).T,
                              axes = self, datasource = self)
-        self.polyrois.append()
+        self.polyrois.append(polyroi)
+        self.active_poly = self.polyrois[-1]
 
-    def update_segments(self):
-        self.traces = {}
-        self.detections = {}
-        self.fig.canvas.set_window_title('Busy...')
-        for i, patch in enumerate(self.segments):
-            trace = patch.segment.trace(self.data,self.mask)
-            mean = trace.mean()
-            mean = 1 if mean == 0. else mean
-            #self.traces[patch]     = (trace - self.F) / self.F
-            if numpy.isnan(trace).any() or numpy.isinf(trace).any():
-                trace = numpy.zeros_like(trace)
-            self.traces[patch]     = scipy.signal.detrend(trace)#trace#scipy.signal.detrend((trace - mean)/mean)
-            self.detections[patch] = find_events(self.traces[patch],
-                                                 equal_var = False,
-                                                 pvalue = 0.05,
-                                                 taumin = 15)
-            if patch.onaxes is not None:
-                ax = patch.onaxes
-                self.unselect_segment(patch)
-                self.select_segment(patch, ax)
-
-            self.fig.canvas.set_window_title(self.fig.canvas.get_window_title() + '.')
-
-        self.fig.canvas.set_window_title('DendriteSegmentationTool')
-
-    def redraw_raster(self):
-        nsegments = len(self.segments)
-        nspines   = len(self.spines)
-        for i, patch in enumerate(self.segments):
-            # remove old raster plot
-            if hasattr(patch, "rasterbars"):
-                patch.rasterbars.remove()
-
-            # create new raster plot
-            detection = self.detections[patch]
-            color     = patch.get_edgecolor()
-            xranges   = [[s,e-s] for s,e in zip(detection.starts,detection.ends)]
-            if len(xranges) > 0:
-                patch.rasterbars = self.axraster.broken_barh(xranges = xranges, yrange = (i/4.,1),
-                                                             linewidth = patch.get_linewidth(),
-                                                             alpha = 0.25, color = color,picker =True)
-                patch.rasterbars.segment = patch
-
-
-
-    def select_segment(self,segment,targetax = None):
-        # check if it is already selected
-        if segment.get_linewidth() == self.thick:
+    def remove_freehand_poly(self,p = None):
+        if p is None:
+            p = self.active_poly
+        if p is None:
             return
-
-        targetax = self.axescycle.next() if targetax is None else targetax
-        color = segment.get_edgecolor()[:-1]
-        segment.set_linewidth(self.thick)
-        for span in segment.spans:
-            span.set_linewidth(self.thick)
-
-        # if we did not yet calculate any segment information, we need to do it now
-        if segment not in self.traces:
-            self.update_segments()
-
-        trace     = self.traces[segment]
-        detection = self.detections[segment]
-
-        # create a list or artists that should be removed when the artist is toggled off
-        # plot returns that list already holding the one line
-        segment.traceline, = targetax.plot(trace,color = color,lw = 0.5)
-        xranges = [[s,e-s] for s,e in zip(detection.starts,detection.ends)]
-        if len(xranges) > 0:
-            segment.eventbars  = targetax.broken_barh(xranges = xranges,
-                                                      yrange = (-1,2),alpha = 0.25,color = color)
-
-        segment.onaxes = targetax
-        if hasattr(segment,"rasterbars"):
-            segment.rasterbars.set_linewidth(self.thick)
-
-        segment.pscatter = targetax.scatter(detection.putative, detection.pvalues,color = 'black')
-
-        segment.texts = []
-        for ps,p,r in zip(detection.putative,detection.pvalues,detection.reason):
-            te = targetax.text(x= ps, y = 0,s=str(r),color = 'black',
-                               ha = 'center',va = 'center',size = 20,clip_on=True)
-            segment.texts.append(te)
-        mi,ma = targetax.get_ylim()
-        mi = min(mi,numpy.min(trace)*1.1)
-        ma = max(ma,numpy.max(trace)*1.1)
-        targetax.set_ylim(mi,ma)
+        self.next_freehand()
+        p.remove()
+        self.polyrois.remove(p)
         self.fig.canvas.draw()
-
-    def unselect_segment(self,segment):
-        # check if it is already unselected
-        if segment.get_linewidth() == self.thin:
-            return
-        segment.set_linewidth(self.thin)
-        for span in segment.spans:
-            span.set_linewidth(self.thin)
-        if hasattr(segment,"traceline"):
-            segment.traceline.remove()
-            del segment.traceline
-        if hasattr(segment,"eventbars"):
-            segment.eventbars.remove()
-            del segment.eventbars
-        if hasattr(segment,"rasterbars"):
-            segment.rasterbars.set_linewidth(self.thin)
-        if hasattr(segment,"pscatter"):
-            segment.pscatter.remove()
-            del segment.pscatter
-        if hasattr(segment,"texts"):
-            for t in segment.texts:
-                t.remove()
-            del segment.texts
-
-        segment.onaxes = None
-        self.fig.canvas.draw()
-
-    #def onclick()
 
     def onkey(self,event):
-        try:
-            if event.inaxes in self.timeaxes and event.key == ' ':
-                self.active_frame = int(event.xdata)
-            if event.key == '+':
-                self.threshold = self.threshold*1.05
-            if event.key == '-':
-                self.threshold = self.threshold/1.05
-            if event.key  == 'm':
-                self.toggle_overlay()
-        except Exception as e:
-            import sys, traceback
-            traceback.print_exc(file=sys.stdout)
-            print e
+        if event.inaxes in self.timeaxes and event.key == ' ':
+            self.active_frame = int(event.xdata)
+        if event.key == '+':
+            self.threshold = self.threshold*1.05
+        if event.key == '-':
+            self.threshold = self.threshold/1.05
+        if event.key  == 'm':
+            self.toggle_overlay()
 
     def onpick(self,event):
-        try:
-            if event.mouseevent.inaxes is self.aximage:
-                if event.artist in self.segments:
-                    self.toggle_segment(event.artist)
-            elif event.mouseevent.inaxes is self.axraster:
-                self.toggle_segment(event.artist.segment)
-
-        except Exception as e:
-            import sys, traceback
-            traceback.print_exc(file=sys.stdout)
-            print e
+        if event.mouseevent.inaxes is self.aximage:
+            if event.artist.roi is self.active_roi:
+                # ignore the selection event for the active item
+                # TODO: this doesnt work properyl, since the segment gets activated bevore the freehand onpick is evaluated
+                # hence in the freehand onpick evaluation we reactivate the freehand even if it was the active selection
+                # bevore onpick invocation
+                return
+            if event.artist.roi in self.polyrois:
+                #print "fount polyroi, ignoring"
+                return
+                #self.active_poly = event.artist.roi
+            for b in self.branches:
+                if event.artist.roi in b.children:
+                    #print "fount segmentroi"
+                    self.active_segment = event.artist.roi
+        elif event.mouseevent.inaxes in [self.axtraceactive] + self.axtracehold:
+            #print "onpick for trace", event.artist
+            # get the roi from the selected line
+            if hasattr(event.artist,"roi"):
+                roi = event.artist.roi
+                # check whether the roi is a segment or freehand
+                if roi in self.polyrois:
+                    # its a freehand, make it active
+                    self.active_poly = roi
+                else:
+                    # seach for segment in all branche's children
+                    for b in self.branches:
+                        if roi in b.children:
+                            # found it, make it active
+                            self.active_segment = roi
+                # nothing found, ignore it
