@@ -41,7 +41,7 @@ class PolygonRoi(object):
         self.polymask = outline.view(PolyMask)
         self.artist   = Polygon(outline, fill = False,
                                 picker = True,
-                                lw  = PolygonRoi.thin,
+                                lw  = self.thin,
                                 color = PolygonRoi.colorcycle.next(),
                                 **kwargs)
         self.artist.roi = self
@@ -118,11 +118,11 @@ class PolygonRoi(object):
         self.relim(ax)
         if len(self.holdaxes) > 0:
             #self.artist.set_fill(True)
-            self.artist.set_linestyle('--')
-            #self.artist.set_alpha(0.35)
+            self.artist.set_linestyle('dashed')
+            #self.artist.set_alpha(0.15)
         else:
             #self.artist.set_fill(False)
-            self.artist.set_linestyle('-')
+            self.artist.set_linestyle('solid')
             #self.artist.set_alpha(1)
 
     @trace.deleter
@@ -137,13 +137,13 @@ class PolygonRoi(object):
     @active.setter
     def active(self, active):
         if active:
-            self.artist.set_linewidth(PolygonRoi.thick)
+            self.artist.set_linewidth(self.thick)
             self.traceline, = self.axes.axtraceactive.plot(self.trace, color = self.color)
         else:
             if hasattr(self,"traceline") and self.traceline in self.axes.axtraceactive.lines:
                 self.traceline.remove()
                 del self.traceline
-            self.artist.set_linewidth(PolygonRoi.thin)
+            self.artist.set_linewidth(self.thin)
         self.relim(self.axes.axtraceactive)
         self.__active = active
 
