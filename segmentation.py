@@ -287,7 +287,8 @@ class DendriteSegmentationTool(object):
         #red_alpha_cm.set_under([0,0,0,0])
 
         #norm = matplotlib.colors.LogNorm(.001,1.)
-        vmin,vmax = numpy.nanpercentile(self.data, q = [pmin,pmax])
+        x,y,t = self.data.shape
+        vmin,vmax = numpy.nanpercentile(self.data[...,:min(t/10,50)], q = [pmin,pmax])
         norm = matplotlib.colors.Normalize(vmin = vmin, vmax = vmax, clip = True)
         self.frameimg = self.aximage.imshow(self.data[...,0],cmap = red_alpha_cm,norm = norm ,
                                         interpolation='nearest')
