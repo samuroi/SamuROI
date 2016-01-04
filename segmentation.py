@@ -362,20 +362,37 @@ class DendriteSegmentationTool(object):
         self.fig.canvas.manager.toolbar.addSeparator()
 
         # ============== FREEHAND SELECTION ===================
-        self.freehand_mode = False
-        tooltip = """Change to freehand selection mask creation mode.
-                     next line
-                     foobar
-                  """
-        self.freehand_creator = PolyMaskCreator(axes = self.aximage,
+        tooltip = "Create a freehand polygon mask.\n" + \
+                        "If the freehand mode is active each click into the 2D image\n" + \
+                        "will add a corner to the polygon. Pressing <enter> will finish\n" + \
+                        "(and close) the polygon."
+
+        self.polymask_creator = PolyMaskCreator(axes = self.aximage,
                                   canvas = self.fig.canvas,
                                   update = self.fig.canvas.draw,
-                                  notify = self.add_freehand_poly, enabled = False )
-        add_action("FreeHand", self.toggle_freehand_mode, tooltip, checkable = True)
-        add_action("<", self.next_freehand, tooltip)
-        add_action(">", self.previous_freehand, tooltip)
-        add_action("del", self.remove_freehand_poly, tooltip)
+                                  notify = self.add_polymask)
+        add_action("PolygonMask", self.toggle_polymask_mode, tooltip, checkable = True)
+        add_action("<", self.next_polymask, "Select the next freehand polygon mask.")
+        add_action(">", self.previous_polymask, "Select the previous polygon mask.")
+        add_action("del", self.remove_polymask, "Remove the currently active polygon mask.")
         self.fig.canvas.manager.toolbar.addSeparator()
+
+        # ============== PIXEL ROI SELECTION ===================
+        tooltip = "Create freehand pixel masks.\n" + \
+                        "If the freehand mode is active each click into the 2D image\n" + \
+                        "will add a pixel to the pixel mask. Pressing <enter> will finish\n" + \
+                        "the mask and the next clicks will create another pixel mask."
+
+        self.pixelmask_creator = PixelMaskCreator(axes = self.aximage,
+                                  canvas = self.fig.canvas,
+                                  update = self.fig.canvas.draw,
+                                  notify = newpixelmask)
+        add_action("PixelMask", self.toggle_pixelmask_mode, tooltip, checkable = True)
+        add_action("<", self.next_pixelmask, "Select the next pixelmask.")
+        add_action(">", self.previous_pixelmask, "Select the previous pixelmask")
+        add_action("del", self.remove_pixelmask, "Remove the currently active pixelmask.")
+        self.fig.canvas.manager.toolbar.addSeparator()
+
 
         # ============ TRACE PLOT CONTROL ====================
         def hold(ax):
@@ -429,22 +446,47 @@ class DendriteSegmentationTool(object):
             self.fig.canvas.draw()
 
 
-    def next_freehand(self):
+    def next_polymask(self):
         self.active_poly = self.polyroicycle.next()
 
-    def previous_freehand(self):
+    def previous_polymask(self):
         self.active_poly = self.polyroicycle.prev()
 
-    def toggle_freehand_mode(self):
-        self.freehand_creator.enabled = not self.freehand_creator.enabled
+    def toggle_polymask_mode(self):
+        self.polymask_creator.enabled = not self.polymask_creator.enabled
 
-    def add_freehand_poly(self,x,y):
+    def add_polymask(self,x,y):
         polyroi = PolygonRoi(outline = numpy.array([x,y]).T,
                              axes = self, datasource = self)
         self.polyrois.append(polyroi)
         self.active_poly = self.polyrois[-1]
 
-    def remove_freehand_poly(self,p = None):
+    def remove_polymask(self,p = None):
+        if p is None:
+            p = self.active_poly
+        if p is None:
+            return
+        self.next_freehand()
+        p.remove()
+        self.polyrois.remove(p)
+        self.fig.canvas.draw()
+
+    def next_pixelmask(self):
+        self.active_poly = self.polyroicycle.next()
+
+    def previous_pixelmask(self):
+        self.active_poly = self.polyroicycle.prev()
+
+    def toggle_pixelmask_mode(self):
+        self.pixelmask_creator.enabled = not self.pixelmask_creator.enabled
+
+    def add_pixelmask(self,x,y):
+        pixelroi = PixelRoi(pixels = [x,y],
+                             axes = self, datasource = self)
+        self.pixelrois.append(pixelroi)
+        self.active_pixelroi = self.pixelrois[-1]
+
+    def remove_polymask(self,p = None):
         if p is None:
             p = self.active_poly
         if p is None:

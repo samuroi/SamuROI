@@ -4,16 +4,11 @@ from dumb.util import PolyMask
 
 from matplotlib.patches import Polygon
 
-class PolygonRoi(object):
+class Roi(object):
     """
-    Extend the pure branch to also handle artist, trace and selection attributes.
+    Base class for rois that allow calculating traces and have an attached matplotlib artists.
+    This class handles trace updates, trace plot states, trace holding and the roi artist managment.
     """
-
-    colors = ['#CC0099','#CC3300','#99CC00','#00FF00','#006600','#999966']
-    colorcycle = itertools.cycle(colors)
-
-    thick = 5
-    thin  = 1
 
     class TraceCache(dict):
         """
@@ -27,33 +22,21 @@ class PolygonRoi(object):
 
     tracecache = TraceCache()
 
-    def __init__(self, outline, datasource, axes, **kwargs):
-        """
-        The datasource needs to provide attributes:
-            data and mask
-            data needs to be WxHxT array
-            and mask may be a WxH array or None
-            by providint the datasource as proxy object to the PolygonRoi,
-            we can easyly exchange the data in other parts of the application.
-        """
-        self.datasource = datasource
-        self.axes     = axes
-        self.polymask = outline.view(PolyMask)
-        self.artist   = Polygon(outline, fill = False,
-                                picker = True,
-                                lw  = self.thin,
-                                color = PolygonRoi.colorcycle.next(),
-                                **kwargs)
-        self.artist.roi = self
+    def __init__(self, axes, artist):
         self.__active = False
 
+        self.artist = artist
+        """The artist representing the mask."""
+
+        self.axes = axes
+        """an object that has a axtraceactive attribute defininf the axes where to plot the active traces"""
         self.holdaxes  = []
         """the list of axes where this roi actually holds a trace"""
         self.holdlines = {}
         """a mapping from the axes where the roi holds a trace, to the line artist"""
 
-        if axes is not None:
-            axes.aximage.add_artist(self.artist)
+    def applymask(self):
+        raise NotImplementedError("applymask needs to be implemented in a derived class.")
 
     @property
     def color(self):
@@ -61,11 +44,9 @@ class PolygonRoi(object):
 
     @property
     def trace(self):
-        if self not in PolygonRoi.tracecache:
-            data = self.datasource.data
-            mask = self.datasource.mask
-            PolygonRoi.tracecache[self] = self.polymask(data = data, mask = mask)
-        return PolygonRoi.tracecache[self]
+        if self not in Roi.tracecache:
+            Roi.tracecache[self] = self.applymask()
+        return Roi.tracecache[self]
 
     def relim(self,axes):
         """recalculate and update the axes limit after adding/removing a line or updating via notify."""
@@ -83,8 +64,8 @@ class PolygonRoi(object):
             line.remove()
             # recalculate the ylim for the remaining lines
             self.relim(axes)
-        if self in PolygonRoi.tracecache:
-            del PolygonRoi.tracecache[self]
+        if self in Roi.tracecache:
+            del Roi.tracecache[self]
 
 
     def notify(self):
@@ -116,19 +97,11 @@ class PolygonRoi(object):
             self.holdlines[ax] = line
         # because we have added/removed a line from the holdaxes, we need to relimit the axes
         self.relim(ax)
-        if len(self.holdaxes) > 0:
-            #self.artist.set_fill(True)
-            self.artist.set_linestyle('dashed')
-            #self.artist.set_alpha(0.15)
-        else:
-            #self.artist.set_fill(False)
-            self.artist.set_linestyle('solid')
-            #self.artist.set_alpha(1)
 
     @trace.deleter
     def trace(self):
-        if self in PolygonRoi.tracecache:
-            del PolygonRoi.tracecache[self]
+        if self in Roi.tracecache:
+            del Roi.tracecache[self]
 
     @property
     def active(self):
@@ -146,5 +119,3 @@ class PolygonRoi(object):
             self.artist.set_linewidth(self.thin)
         self.relim(self.axes.axtraceactive)
         self.__active = active
-
-    #active = property(_get_active,_set_active)

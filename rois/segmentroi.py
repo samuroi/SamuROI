@@ -1,5 +1,5 @@
 
-from .branch  import Branch
+from ..branch  import Branch
 from .polyroi import PolygonRoi
 
 
