@@ -1,27 +1,23 @@
 from collections import namedtuple
 
-from dumb.util import noraise
+from maskcreator import MaskCreator
 
-class PolyRoiCreator(object):
+class PolyMaskCreator(MaskCreator):
     """Manages the interactive creation of polygon masks."""
 
     Status = namedtuple('Status',['x','y','line'])
 
-    @property
-    def enabled(self):
-        return self.clickslot is not None
-
-    @enabled.setter
+    @MaskCreator.enabled.setter
     def enabled(self, e):
-        """If disabled while creating a mask, mask gets discarded."""
-        if not self.enabled and e:
-            self.__connect()
-        elif self.enabled and not e:
-            self.__disconnect()
-            if self.status is not None:
-                self.status.line.remove()
-                self.update()
-                self.status = None
+        """Extend the active setter of MaskCreator to also remove any artists if deactivated"""
+        # call base class property setter
+        MaskCreator.enabled.fset(self,e)
+        # handle own derived stuff
+        if self.status is not None:
+            self.status.line.remove()
+            self.update()
+            self.status = None
+
 
     def __init__(self, axes, canvas, update, notify, enabled = False):
         """
@@ -32,34 +28,16 @@ class PolyRoiCreator(object):
                 notify, a callable that will get evoked with the outline of a finished polygon.
                 enabled, should mask creation be enabled from the begininig (default False)
         """
-        self.axes   = axes
-        self.canvas = canvas
+        # assign attribute bevore base class constructor call, since the base class will call the enable slot
         self.status = None
-        self.update = update
-        self.notify = notify
-        self.clickslot = None
-        self.keyslot   = None
+        super(PolyMaskCreator,self).__init__(axes = axes,
+                                              canvas = canvas,
+                                              update = update,
+                                              notify = notify,
+                                              enabled = enabled)
 
-        # connect slots via property setter
-        self.enabled = enabled
 
-    def __connect(self):
-        self.clickslot = self.canvas.mpl_connect('button_press_event',self.onclick)
-        self.keyslot   = self.canvas.mpl_connect('key_press_event',self.onkey)
-
-    def __disconnect(self):
-        if self.keyslot is not None:
-            self.canvas.mpl_disconnect(self.clickslot)
-            self.canvas.mpl_disconnect(self.keyslot)
-            self.keyslot   = None
-            self.clickslot = None
-
-    @noraise
     def onclick(self,event):
-        # filter out all events of other axes
-        if self.axes is not event.inaxes:
-            return
-
         if self.status is None:
             line, = self.axes.plot([],[], lw = 3,scalex = False, scaley = False)
             self.status = self.Status(x = [], y = [], line = line)
@@ -69,7 +47,6 @@ class PolyRoiCreator(object):
         self.status.line.set_data(self.status.x,self.status.y)
         self.update()
 
-    @noraise
     def onkey(self,event):
         if self.status is None or event.key != 'enter':
             return

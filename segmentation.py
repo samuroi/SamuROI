@@ -23,7 +23,7 @@ from dumb.util import noraise
 from .branch import Branch
 from .polyroi import PolygonRoi
 from .branchroi import BranchRoi
-from .polymaskcreator import PolyRoiCreator
+from .polymaskcreator import PolyMaskCreator
 
 from PyQt4 import QtGui
 
@@ -367,7 +367,7 @@ class DendriteSegmentationTool(object):
                      next line
                      foobar
                   """
-        self.freehand_creator = PolyRoiCreator(axes = self.aximage,
+        self.freehand_creator = PolyMaskCreator(axes = self.aximage,
                                   canvas = self.fig.canvas,
                                   update = self.fig.canvas.draw,
                                   notify = self.add_freehand_poly, enabled = False )
