@@ -60,6 +60,11 @@ class MaskCreator(object):
         # filter out all events of other axes
         if self.axes is not event.inaxes:
             return
+        # fileter out events when zoom or pan is active
+        if self.canvas.manager.toolbar._active == 'PAN':
+            return
+        if self.canvas.manager.toolbar._active == 'ZOOM':
+            return
 
         # forward call to baseclass event handling
         self.onclick(event)
