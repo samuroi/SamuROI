@@ -16,7 +16,7 @@ class BranchRoi(Branch,PolygonRoi):
     @PolygonRoi.active.setter
     def active(self,active):
         """
-        Extend the polyroi _set_active property, to also deactivate contained segments.
+        Extend the polyroi active property, to also deactivate contained segments.
         """
         if active == False:
             self.active_segment = None
