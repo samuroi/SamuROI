@@ -1,5 +1,5 @@
 
-from .branch import Branch
+from ..branch import Branch
 from .polyroi import PolygonRoi
 from .segmentroi import SegmentRoi
 
@@ -20,8 +20,6 @@ class BranchRoi(Branch,PolygonRoi):
         """
         if active == False:
             self.active_segment = None
-        else:
-            self.next_segment()
         # call the baseclass property setter
         PolygonRoi.active.fset(self,active)
 
@@ -30,7 +28,6 @@ class BranchRoi(Branch,PolygonRoi):
         PolygonRoi.__init__(self, outline = self.outline, datasource = datasource, axes = axes, **kwargs)
         #super(BranchRoi,self).__init__(data, axes = axes, **kwargs)
         self.children = []
-        self.__active_segment = None
         self.__children_cycle = bicycle(self.children)
 
     def next_segment(self):
@@ -42,20 +39,6 @@ class BranchRoi(Branch,PolygonRoi):
         if len(self.children) > 0:
             return self.__children_cycle.prev()
         return None
-
-    @property
-    def active_segment(self):
-        return self.__active_segment
-
-    @active_segment.setter
-    def active_segment(self,s):
-        # hide artists of previous branch
-        if self.active_segment is not None:
-            self.active_segment.active = False
-
-        self.__active_segment = s
-        if s is not None:
-            self.active_segment.active = True
 
     def split(self, length):
         """Only supported if self is a root item."""

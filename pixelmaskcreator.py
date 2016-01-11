@@ -14,7 +14,7 @@ class PixelMaskCreator(MaskCreator):
         MaskCreator.enabled.fset(self,e)
         # handle own derived stuff
         if self.status is not None:
-            self.status.line.remove()
+            self.status.scatter.remove()
             self.update()
             self.status = None
 
@@ -35,14 +35,26 @@ class PixelMaskCreator(MaskCreator):
                                               enabled = enabled)
 
 
+    def __contains(self,x,y):
+        if x in self.status.x:
+            i = self.status.x.index(x)
+            return self.status.y[i] == y
+        return False
 
     def onclick(self,event):
         if self.status is None:
             scatter = self.axes.scatter([],[],marker = 'x')
             self.status = self.Status(x = [], y = [], scatter = scatter)
-
-        self.status.x.append(int(round(event.xdata)))
-        self.status.y.append(int(round(event.ydata)))
+        x,y = int(round(event.xdata)),int(round(event.ydata))
+        # check if we already got the point in the list, if so, remove it
+        if self.__contains(x,y):
+            # erase element by index from both lists
+            i = self.status.x.index(x)
+            self.status.x[i:i+1] = []
+            self.status.y[i:i+1] = []
+        else:
+            self.status.x.append(x)
+            self.status.y.append(y)
         self.status.scatter.set_offsets(numpy.array([self.status.x,self.status.y]).T)
         self.update()
 
@@ -51,6 +63,8 @@ class PixelMaskCreator(MaskCreator):
             return
 
         self.status.scatter.remove()
-        self.notify(self.status.x, self.status.y)
+        x,y = self.status.x,self.status.y
         self.update()
         self.status = None
+        # set status to None bevore notify, because the notify callback might disable the creator
+        self.notify(x,y)

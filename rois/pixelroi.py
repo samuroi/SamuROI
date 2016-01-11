@@ -14,6 +14,19 @@ class PixelRoi(Roi):
     colors = ['#CC0099','#CC3300','#99CC00','#00FF00','#006600','#999966']
     colorcycle = itertools.cycle(colors)
 
+    @Roi.active.setter
+    def active(self,a):
+        """ Extend the roi setter to also change linewidth of active artist."""
+        if a is True:
+            self.artist.set_linewidth(5)
+        else:
+            self.artist.set_linewidth(1)
+        Roi.active.fset(self,a)
+
+    @property
+    def color(self):
+        return self.__color
+
     def __init__(self, pixels, datasource, axes, **kwargs):
         """
         Arguments:
@@ -23,16 +36,17 @@ class PixelRoi(Roi):
         self.datasource = datasource
         self.pixels = pixels
 
+        self.__color = PixelRoi.colorcycle.next()
         artist   = axes.aximage.scatter(self.pixels[0],self.pixels[1],
-                                picker = True,
-                                color = PixelRoi.colorcycle.next(),
-                                **kwargs)
+                                        picker = True, color = self.__color,
+                                        marker = 'o',
+                                        **kwargs)
         artist.roi = self
         super(PixelRoi,self).__init__(axes = axes, artist = artist)
 
-    def applymask():
+    def applymask(self):
         data = self.datasource.data
-        return data[self.pixels[0],self.pixels[1],:].mean(axis = 0)
+        return data[self.pixels[1],self.pixels[0],:].mean(axis = 0)
 
     def toggle_hold(self,ax):
         """

@@ -39,10 +39,6 @@ class Roi(object):
         raise NotImplementedError("applymask needs to be implemented in a derived class.")
 
     @property
-    def color(self):
-        return self.artist.get_edgecolor()
-
-    @property
     def trace(self):
         if self not in Roi.tracecache:
             Roi.tracecache[self] = self.applymask()
@@ -110,12 +106,10 @@ class Roi(object):
     @active.setter
     def active(self, active):
         if active:
-            self.artist.set_linewidth(self.thick)
             self.traceline, = self.axes.axtraceactive.plot(self.trace, color = self.color)
         else:
             if hasattr(self,"traceline") and self.traceline in self.axes.axtraceactive.lines:
                 self.traceline.remove()
                 del self.traceline
-            self.artist.set_linewidth(self.thin)
         self.relim(self.axes.axtraceactive)
         self.__active = active

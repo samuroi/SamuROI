@@ -20,9 +20,16 @@ from dumb.util import bicycle
 from dumb.util import PolyMask
 from dumb.util import noraise
 
+from dumb.util import bicyclelist
+
 from .branch import Branch
-from .polyroi import PolygonRoi
-from .branchroi import BranchRoi
+
+from .rois.pixelroi import PixelRoi
+from .rois.polyroi import PolygonRoi
+from .rois.branchroi import BranchRoi
+from .rois.segmentroi import SegmentRoi
+
+from .pixelmaskcreator import PixelMaskCreator
 from .polymaskcreator import PolyMaskCreator
 
 from PyQt4 import QtGui
@@ -91,73 +98,118 @@ class DendriteSegmentationTool(object):
 
     def next_branch(self):
         if len(self.branches) > 0:
-            self.active_branch = self.branch_cycle.next()
+            self.active_roi = self.branches.next()
 
     def previous_branch(self):
         if len(self.branches) > 0:
-            self.active_branch = self.branch_cycle.prev()
+            self.active_roi = self.branches.prev()
+
+    def next_pixelroi(self):
+        if len(self.pixelrois) > 0:
+            self.active_roi = self.pixelrois.next()
+
+    def next_polyroi(self):
+        if len(self.polyrois) > 0:
+            self.active_roi = self.polyrois.next()
+
+    def previous_pixelroi(self):
+        if len(self.pixelrois) > 0:
+            self.active_roi = self.pixelrois.prev()
+
+    def previous_polyroi(self):
+        if len(self.polyrois) > 0:
+            self.active_roi = self.polyrois.prev()
 
     def next_segment(self):
-        if self.active_branch is not None:
-            self.active_segment = self.active_branch.next_segment()
-            self.fig.canvas.draw()
+         if self.active_branch is not None:
+            self.active_roi = self.active_branch.next_segment()
 
     def previous_segment(self):
         if self.active_branch is not None:
-            self.active_segment = self.active_branch.previous_segment()
-            self.fig.canvas.draw()
+            self.active_roi = self.active_branch.previous_segment()
 
     @property
-    def active_branch(self):
-        for b in self.branches:
-            if b.active:
-                return b
-        return None
+    def active_roi(self):
+        """
+        Return the active roi. This can be any of the following:
+         - a branch (if the branch has no segments)
+         - a segment of a branch (the corresponding active branch can be obtained by segment.parent)
+         - a freehand polygon roi
+         - a pixel based roi
+         - None
+        """
+        if not hasattr(self, "_activeroi"):
+            self._activeroi = None
+        return self._activeroi
 
-    @active_branch.setter
-    def active_branch(self,b):
-        if self.active_branch is b:
-            return
-        # hide artists of previous branch
-        if self.active_branch is not None:
-            self.active_branch.active = False
-
-        if b is not None:
-            assert(b in self.branches)
-            b.active = True
-            # disable the freehand poly selection
-            if self.active_poly is not None:
-                self.active_poly = None
-        self.fig.canvas.draw()
 
     @property
     def active_segment(self):
-        if self.active_branch is not None:
-            return self.active_branch.active_segment
-        return None
+        if type(self.active_roi) is SegmentRoi:
+            return self.active_roi
+        else:
+            return None
 
-    @active_segment.setter
-    def active_segment(self,s):
-        if self.active_segment is s:
-            return
-        if self.active_segment is not None:
-            self.active_segment.active = False
-        if s is not None:
-            if self.active_branch is not s.parent:
-                self.active_branch = s.parent
-            self.active_branch.active_segment = s
+    @property
+    def active_branch(self):
+        if type(self.active_roi) is BranchRoi:
+            return self.active_roi
+        elif type(self.active_roi) is SegmentRoi:
+            return self.active_roi.parent
+        else:
+            return None
 
-        # enable/disable hold buttons
-        for btn, axes in self.holdbuttons:
-            btn.setEnabled(s is not None)
-            checked = (s is not None) and (axes in s.holdaxes)
-            btn.setChecked(checked)
+    @property
+    def active_polyroi(self):
+        if type(self.active_roi) is PolygonRoi:
+            return self.active_roi
+        else:
+            return None
 
-        self.fig.canvas.draw()
+    @property
+    def active_pixelroi(self):
+        if type(self.active_roi) is PixelRoi:
+            return self.active_roi
+        else:
+            return None
 
     @property
     def active_frame(self):
         return self.__active_frame
+
+    @active_roi.setter
+    def active_roi(self,p):
+        if self.active_roi is p:
+            return
+        # TODO check if p is in any of the roi groups
+
+        # disable previously active roi
+        if self.active_roi is not None:
+            self.active_roi.active = False
+
+        # disable the branch if the active roi is a segment
+        if self.active_segment is not None:
+            self.active_segment.parent.active = False
+
+        # set new active roi
+        self._activeroi = p
+
+        # enable new active roi
+        if p is not None:
+            self.active_roi.active = True
+
+            # enable/disable hold buttons
+            for btn, axes in self.holdbuttons:
+                btn.setEnabled(p is not None)
+                checked = (p is not None) and (axes in p.holdaxes)
+                btn.setChecked(checked)
+
+            # enable branch if active roi is a segment
+            if self.active_segment is not None:
+                self.active_segment.parent.active = True
+
+        self.fig.canvas.draw()
+
 
     @active_frame.setter
     def active_frame(self,f):
@@ -201,7 +253,7 @@ class DendriteSegmentationTool(object):
         if branch is not None and branch in self.branches:
             branch.split(length = length)
         if branch.active:
-            self.active_segment = branch.children[0]
+            self.active_roi = branch.children[0]
 
     def split_segment(self,segment = None, parts = 2):
         """Split the given segment in to equal parts."""
@@ -216,7 +268,7 @@ class DendriteSegmentationTool(object):
 
         segment.split(nsegments = parts)
         if segment.parent.active:
-            self.active_segment = segment.parent.children[i]
+            self.active_roi = segment.parent.children[i]
 
     def join_segments(self, segment = None, next = True):
         """
@@ -235,7 +287,7 @@ class DendriteSegmentationTool(object):
 
         # make the new segment active
         if segment.parent.active:
-            self.active_segment = joined
+            self.active_roi = joined
 
     def __init__(self, data, swc, mean = None, pmin = 10, pmax = 99):
         """
@@ -257,9 +309,9 @@ class DendriteSegmentationTool(object):
         self.gsl = gridspec.GridSpecFromSubplotSpec(4, 2, subplot_spec=self.gs[1], height_ratios = [.6,1,1,1], hspace = 0.075)
         self.aximage  = plt.subplot(self.gsl[:,1])
         self.axtraceactive  = plt.subplot(self.gsl[0,0])
-        self.axhold1 = plt.subplot(self.gsl[1,0])
-        self.axhold2 = plt.subplot(self.gsl[2,0])
-        self.axhold3 = plt.subplot(self.gsl[3,0])
+        self.axhold1 = plt.subplot(self.gsl[1,0],sharex = self.axtraceactive)
+        self.axhold2 = plt.subplot(self.gsl[2,0],sharex = self.axtraceactive)
+        self.axhold3 = plt.subplot(self.gsl[3,0],sharex = self.axtraceactive)
 
         self.axtracehold = [self.axhold1,self.axhold2,self.axhold3]
         """ a list with the axes where traces can put on hold"""
@@ -292,26 +344,26 @@ class DendriteSegmentationTool(object):
         norm = matplotlib.colors.Normalize(vmin = vmin, vmax = vmax, clip = True)
         self.frameimg = self.aximage.imshow(self.data[...,0],cmap = red_alpha_cm,norm = norm ,
                                         interpolation='nearest')
+        # disable autoscale on image axes, to avoid rescaling due to additional artists.
+        self.aximage.set_autoscale_on(False)
 
         self.fig.colorbar(self.frameimg,ax = self.aximage)
-        self.threshold    = 140
+        self.threshold    = numpy.percentile(self.meandata.flatten(), q = 90)
         self.active_frame = 0
 
         self.colors = ['#CC0099','#CC3300','#99CC00','#00FF00','#006600','#999966']
         self.colorcycle = itertools.cycle(self.colors)
 
         # get all parts from the swc file that have at least one segment
-        self.branches = [BranchRoi(branch = b, datasource = self, axes = self) for b in swc.branches if len(b) > 1]
-        self.branch_cycle = bicycle(self.branches)
+        branches = [BranchRoi(branch = b, datasource = self, axes = self) for b in swc.branches if len(b) > 1]
+        self.branches = bicyclelist(branches)
+        """ The list which stores the branches loaded from swc. This list should not be modified"""
 
-        # select first
-        self.next_branch()
+        self.polyrois = bicyclelist()
+        """ The list which stores the polymask rois. Use app.add_polymask(roi) and app.remove_polymask(roi) to modify list."""
 
-        # create storage list for freehand selection polygon rois
-        self.polyrois = []
-        """ The list which stores the freehand rois. Use add_freehand_poly and remove_freehand_poly to modify list."""
-        self.polyroicycle = bicycle(self.polyrois)
-        """ A bi-cycle of the freehand polygon rois."""
+        self.pixelrois = bicyclelist()
+        """ The list which stores the pixel mask rois. Use app.add_pixelmask(roi) and app.remove_pixelmask(roi) to modify list."""
 
         self.fig.canvas.set_window_title('DendriteSegmentationTool')
         #self.fig.canvas.mpl_disconnect(self.fig.canvas.manager.key_press_handler_id)
@@ -332,6 +384,7 @@ class DendriteSegmentationTool(object):
         self.fig.canvas.manager.toolbar.addSeparator()
 
         # ============ BRANCH AND SEGMENT NAVIGATION =================
+        def _setactive(func): self.active_roi = func()
         add_action("<<",self.previous_branch,"Select previous branch.")
         add_action(">>",self.next_branch,"Select next branch.")
         add_action("<",self.next_segment,"Select previous segment.")
@@ -354,7 +407,8 @@ class DendriteSegmentationTool(object):
         self.fig.canvas.manager.toolbar.addSeparator()
 
         # ============ MASK AND THRESHOLD            =================
-        self.mask_checkable = add_action("Mask", self.toggle_overlay, "Toggle the mask overlay.", checkable = True)
+        self.mask_checkable = add_action("Mask", self.toggle_overlay, "Toggle the mask overlay.",
+                                         checkable = True, checked = True)
         def incr(): self.threshold = self.threshold*1.05
         def decr(): self.threshold = self.threshold/1.05
         add_action("-", decr, "Decrease masking threshold.")
@@ -370,11 +424,11 @@ class DendriteSegmentationTool(object):
         self.polymask_creator = PolyMaskCreator(axes = self.aximage,
                                   canvas = self.fig.canvas,
                                   update = self.fig.canvas.draw,
-                                  notify = self.add_polymask)
-        add_action("PolygonMask", self.toggle_polymask_mode, tooltip, checkable = True)
-        add_action("<", self.next_polymask, "Select the next freehand polygon mask.")
-        add_action(">", self.previous_polymask, "Select the previous polygon mask.")
-        add_action("del", self.remove_polymask, "Remove the currently active polygon mask.")
+                                  notify = self.add_polyroi)
+        self.polymask_button = add_action("PolygonMask", self.toggle_polymask_mode, tooltip, checkable = True)
+        add_action("<", self.previous_polyroi, "Select the previous freehand polygon mask.")
+        add_action(">", self.next_polyroi, "Select the next polygon mask.")
+        add_action("del", self.remove_polyroi, "Remove the currently active polygon mask.")
         self.fig.canvas.manager.toolbar.addSeparator()
 
         # ============== PIXEL ROI SELECTION ===================
@@ -386,13 +440,12 @@ class DendriteSegmentationTool(object):
         self.pixelmask_creator = PixelMaskCreator(axes = self.aximage,
                                   canvas = self.fig.canvas,
                                   update = self.fig.canvas.draw,
-                                  notify = newpixelmask)
-        add_action("PixelMask", self.toggle_pixelmask_mode, tooltip, checkable = True)
-        add_action("<", self.next_pixelmask, "Select the next pixelmask.")
-        add_action(">", self.previous_pixelmask, "Select the previous pixelmask")
-        add_action("del", self.remove_pixelmask, "Remove the currently active pixelmask.")
+                                  notify = self.add_pixelroi)
+        self.pixelmask_button = add_action("PixelMask", self.toggle_pixelmask_mode, tooltip, checkable = True)
+        add_action("<", self.previous_pixelroi, "Select the previous pixelmask.")
+        add_action(">", self.next_pixelroi, "Select the next pixelmask")
+        add_action("del", self.remove_pixelroi, "Remove the currently active pixelmask.")
         self.fig.canvas.manager.toolbar.addSeparator()
-
 
         # ============ TRACE PLOT CONTROL ====================
         def hold(ax):
@@ -410,91 +463,50 @@ class DendriteSegmentationTool(object):
         self.holdbuttons = [(self.hold1, self.axhold1),(self.hold2,self.axhold2),(self.hold3,self.axhold3)]
         self.fig.canvas.manager.toolbar.addSeparator()
 
-    @property
-    def active_roi(self):
-        """Return either the active segment, or the active polyroi, or None if there is neither of both."""
-        if self.active_segment is not None:
-            return self.active_segment
-        return self.active_poly
+        # finally, select first branch
+        self.next_branch()
 
-    @property
-    def active_poly(self):
-        if not hasattr(self,"polyrois"):
-            return None
-        for p in self.polyrois:
-            if p.active:
-                return p
-        return None
-
-    @active_poly.setter
-    def active_poly(self,p):
-        bevore = self.active_poly
-        if self.active_poly is not None:
-            self.active_poly.active = False
-        if p is not None:
-            assert(p in self.polyrois)
-            p.active = True
-            self.active_branch = None
-
-        # enable/disable hold buttons
-        for btn, axes in self.holdbuttons:
-            btn.setEnabled(p is not None)
-            checked = (p is not None) and (axes in p.holdaxes)
-            btn.setChecked(checked)
-
-        if bevore is not p:
-            self.fig.canvas.draw()
-
-
-    def next_polymask(self):
-        self.active_poly = self.polyroicycle.next()
-
-    def previous_polymask(self):
-        self.active_poly = self.polyroicycle.prev()
 
     def toggle_polymask_mode(self):
         self.polymask_creator.enabled = not self.polymask_creator.enabled
 
-    def add_polymask(self,x,y):
+    def add_polyroi(self,x,y):
         polyroi = PolygonRoi(outline = numpy.array([x,y]).T,
                              axes = self, datasource = self)
         self.polyrois.append(polyroi)
-        self.active_poly = self.polyrois[-1]
-
-    def remove_polymask(self,p = None):
-        if p is None:
-            p = self.active_poly
-        if p is None:
-            return
-        self.next_freehand()
-        p.remove()
-        self.polyrois.remove(p)
-        self.fig.canvas.draw()
-
-    def next_pixelmask(self):
-        self.active_poly = self.polyroicycle.next()
-
-    def previous_pixelmask(self):
-        self.active_poly = self.polyroicycle.prev()
+        self.active_roi = self.polyrois[-1]
+        self.polymask_creator.enabled = False
+        self.polymask_button.setChecked(False)
 
     def toggle_pixelmask_mode(self):
         self.pixelmask_creator.enabled = not self.pixelmask_creator.enabled
 
-    def add_pixelmask(self,x,y):
+    def add_pixelroi(self,x,y):
         pixelroi = PixelRoi(pixels = [x,y],
                              axes = self, datasource = self)
         self.pixelrois.append(pixelroi)
-        self.active_pixelroi = self.pixelrois[-1]
+        self.active_roi = self.pixelrois[-1]
+        self.pixelmask_creator.enabled = False
+        self.pixelmask_button.setChecked(False)
 
-    def remove_polymask(self,p = None):
+    def remove_pixelroi(self,p = None):
+        """remove given or active roi (if p is None) and make the next roi active."""
         if p is None:
-            p = self.active_poly
+            p = self.active_pixelroi
         if p is None:
             return
-        self.next_freehand()
+        p.remove()
+        self.pixelrois.remove(p)
+        self.active_roi = self.pixelrois.cur()
+
+    def remove_polyroi(self,p = None):
+        if p is None:
+            p = self.active_polyroi
+        if p is None:
+            return
         p.remove()
         self.polyrois.remove(p)
-        self.fig.canvas.draw()
+        self.active_roi = self.polyrois.cur()
 
     def onkey(self,event):
         if event.inaxes in self.timeaxes and event.key == ' ':
@@ -521,7 +533,7 @@ class DendriteSegmentationTool(object):
             for b in self.branches:
                 if event.artist.roi in b.children:
                     #print "fount segmentroi"
-                    self.active_segment = event.artist.roi
+                    self.active_roi = event.artist.roi
         elif event.mouseevent.inaxes in [self.axtraceactive] + self.axtracehold:
             #print "onpick for trace", event.artist
             # get the roi from the selected line
@@ -530,11 +542,11 @@ class DendriteSegmentationTool(object):
                 # check whether the roi is a segment or freehand
                 if roi in self.polyrois:
                     # its a freehand, make it active
-                    self.active_poly = roi
+                    self.active_roi = roi
                 else:
                     # seach for segment in all branche's children
                     for b in self.branches:
                         if roi in b.children:
                             # found it, make it active
-                            self.active_segment = roi
+                            self.active_roi = roi
                 # nothing found, ignore it
