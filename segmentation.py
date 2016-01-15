@@ -400,7 +400,7 @@ class DendriteSegmentationTool(object):
         self.fig.canvas.manager.toolbar.addSeparator()
 
         # ============ SEGMENT MERGE AND SPLIT       =================
-        self.fig.canvas.manager.toolbar.addWidget(QtGui.QLabel("Segment:"))
+        #self.fig.canvas.manager.toolbar.addWidget(QtGui.QLabel("Segment:"))
         add_action("1/2", self.split_segment, "Split selected segment in two equal parts.")
         add_action("<+",lambda : self.join_segments(next = False), "Merge selected segment with preceeding segment.")
         add_action("+>",lambda : self.join_segments(next = True), "Merge selected segment with next segment.")
@@ -425,7 +425,7 @@ class DendriteSegmentationTool(object):
                                   canvas = self.fig.canvas,
                                   update = self.fig.canvas.draw,
                                   notify = self.add_polyroi)
-        self.polymask_button = add_action("PolygonMask", self.toggle_polymask_mode, tooltip, checkable = True)
+        self.polymask_button = add_action("Poly", self.toggle_polymask_mode, tooltip, checkable = True)
         add_action("<", self.previous_polyroi, "Select the previous freehand polygon mask.")
         add_action(">", self.next_polyroi, "Select the next polygon mask.")
         add_action("del", self.remove_polyroi, "Remove the currently active polygon mask.")
@@ -441,7 +441,7 @@ class DendriteSegmentationTool(object):
                                   canvas = self.fig.canvas,
                                   update = self.fig.canvas.draw,
                                   notify = self.add_pixelroi)
-        self.pixelmask_button = add_action("PixelMask", self.toggle_pixelmask_mode, tooltip, checkable = True)
+        self.pixelmask_button = add_action("Pixel", self.toggle_pixelmask_mode, tooltip, checkable = True)
         add_action("<", self.previous_pixelroi, "Select the previous pixelmask.")
         add_action(">", self.next_pixelroi, "Select the next pixelmask")
         add_action("del", self.remove_pixelroi, "Remove the currently active pixelmask.")
@@ -455,7 +455,7 @@ class DendriteSegmentationTool(object):
                     self.active_roi.toggle_hold(ax)
                 self.fig.canvas.draw()
             return func
-        self.fig.canvas.manager.toolbar.addWidget(QtGui.QLabel("Hold traces:"))
+        #self.fig.canvas.manager.toolbar.addWidget(QtGui.QLabel("Hold traces:"))
         tooltip =  "Keep the trace of the currently selected segment in one of the hold axes."
         self.hold1 = add_action("H1", hold(self.axhold1),tooltip, checkable = True, enabled = False)
         self.hold2 = add_action("H2", hold(self.axhold2),tooltip, checkable = True, enabled = False)
