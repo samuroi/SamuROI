@@ -1,3 +1,5 @@
+import numpy
+
 
 from ..branch import Branch
 from .polyroi import PolygonRoi
@@ -16,18 +18,29 @@ class BranchRoi(Branch,PolygonRoi):
     @PolygonRoi.active.setter
     def active(self,active):
         """
-        Extend the polyroi active property, to also deactivate contained segments.
+        Extend the polyroi active property, to also plot linescan on top axes.
         """
-        if active == False:
-            self.active_segment = None
         # call the baseclass property setter
         PolygonRoi.active.fset(self,active)
+
+        # plot the linescan
+        if len(self.children) > 0 and active:
+            linescan = numpy.row_stack((child.trace for child in self.children))
+            tmax      = self.datasource.data.shape[-1]
+            nsegments = len(self.children)
+            self.imglinescan = self.axes.axraster.imshow(linescan,interpolation = 'nearest',aspect = 'auto',cmap = 'plasma',picker = True, extent = (0,tmax,0,nsegments))
+            self.axes.axraster.set_ylim(0,nsegments)
+        elif not active and self.imglinescan is not None:
+            self.imglinescan.remove()
+            self.imglinescan = None
+
 
     def __init__(self, branch, datasource, axes, **kwargs):
         Branch.__init__(self, data = branch)
         PolygonRoi.__init__(self, outline = self.outline, datasource = datasource, axes = axes, **kwargs)
         #super(BranchRoi,self).__init__(data, axes = axes, **kwargs)
         self.children = []
+        self.imglinescan = None
         self.__children_cycle = bicycle(self.children)
 
     def next_segment(self):
@@ -39,6 +52,17 @@ class BranchRoi(Branch,PolygonRoi):
         if len(self.children) > 0:
             return self.__children_cycle.prev()
         return None
+
+
+    def notify(self):
+        """Override the roi notify to also update the linescan."""
+        # Since the notify will also be called for branch rois if relevant data has changed, we can use the
+        # branchrois notify call to update all segments of the branch immediately.
+        # since the segments will have their results cached the overhead should be minimal.
+        if self.imglinescan is not None:
+            linescan = numpy.row_stack((child.trace for child in self.children))
+            self.imglinescan.set_data(linescan)
+        PolygonRoi.notify(self)
 
     def split(self, length):
         """Only supported if self is a root item."""

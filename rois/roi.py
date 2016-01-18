@@ -38,10 +38,25 @@ class Roi(object):
     def applymask(self):
         raise NotImplementedError("applymask needs to be implemented in a derived class.")
 
+#def postapply(self,trace):
+#"""
+#Do some postprocessing on the trace. This function will be called
+#after the mask has been applied and the data is extracted from the video.
+#This function can be overridden, or monkeypatched. It is supposed to return a numpy array
+#of the same shape as the input trace. The default behaviour is doin nothing."""
+#return trace
+
     @property
     def trace(self):
         if self not in Roi.tracecache:
-            Roi.tracecache[self] = self.applymask()
+            t = self.applymask()
+            # TODO for now, the postappy is a class function
+            # a cleaner approach would be to make this a member function, but this requires
+            # more intrusive changes on the frontend side (i.e. loop all rois and adopt filter function)
+            if hasattr(Roi,"postapply"):
+                Roi.tracecache[self] = Roi.postapply(t)
+            else:
+                Roi.tracecache[self] = t
         return Roi.tracecache[self]
 
     def relim(self,axes):

@@ -24,6 +24,7 @@ from dumb.util import bicyclelist
 
 from .branch import Branch
 
+from .rois.roi import Roi
 from .rois.pixelroi import PixelRoi
 from .rois.polyroi import PolygonRoi
 from .rois.branchroi import BranchRoi
@@ -70,6 +71,7 @@ class DendriteSegmentationTool(object):
         self.mask = segmentation == 2
         # force recalculation of traces
         PolygonRoi.tracecache.clear()
+        self.refresh_linescan()
         # set proper ylimit for axtraceactive and axtracehold
         for ax in [self.axtraceactive] + self.axtracehold:
             if len(ax.lines) <= 1: continue # skip axes if it only contains one line (the frame marker)
@@ -92,7 +94,7 @@ class DendriteSegmentationTool(object):
         # see if value changed
         b = self.show_overlay
         self.overlayimg.set_visible(v)
-        self.mask_checkable.setChecked(v)
+        self.btn_toggle_mask.setChecked(v)
         if (b and not v) or (v and not b):
             self.fig.canvas.draw()
 
@@ -182,6 +184,7 @@ class DendriteSegmentationTool(object):
         if self.active_roi is p:
             return
         # TODO check if p is in any of the roi groups
+        before = self.active_roi
 
         # disable previously active roi
         if self.active_roi is not None:
@@ -207,6 +210,10 @@ class DendriteSegmentationTool(object):
             # enable branch if active roi is a segment
             if self.active_segment is not None:
                 self.active_segment.parent.active = True
+
+        # update the linescan image
+        if self.active_branch is not None and self.active_branch is not before:
+            self.refresh_linescan()
 
         self.fig.canvas.draw()
 
@@ -253,6 +260,7 @@ class DendriteSegmentationTool(object):
         if branch is not None and branch in self.branches:
             branch.split(length = length)
         if branch.active:
+            self.refresh_linescan()
             self.active_roi = branch.children[0]
 
     def split_segment(self,segment = None, parts = 2):
@@ -308,10 +316,10 @@ class DendriteSegmentationTool(object):
         self.axraster = plt.subplot(self.gs[0])
         self.gsl = gridspec.GridSpecFromSubplotSpec(4, 2, subplot_spec=self.gs[1], height_ratios = [.6,1,1,1], hspace = 0.075)
         self.aximage  = plt.subplot(self.gsl[:,1])
-        self.axtraceactive  = plt.subplot(self.gsl[0,0])
-        self.axhold1 = plt.subplot(self.gsl[1,0],sharex = self.axtraceactive)
-        self.axhold2 = plt.subplot(self.gsl[2,0],sharex = self.axtraceactive)
-        self.axhold3 = plt.subplot(self.gsl[3,0],sharex = self.axtraceactive)
+        self.axtraceactive  = plt.subplot(self.gsl[0,0],sharex = self.axraster)
+        self.axhold1 = plt.subplot(self.gsl[1,0],sharex = self.axraster)
+        self.axhold2 = plt.subplot(self.gsl[2,0],sharex = self.axraster)
+        self.axhold3 = plt.subplot(self.gsl[3,0],sharex = self.axraster)
 
         self.axtracehold = [self.axhold1,self.axhold2,self.axhold3]
         """ a list with the axes where traces can put on hold"""
@@ -369,6 +377,7 @@ class DendriteSegmentationTool(object):
         #self.fig.canvas.mpl_disconnect(self.fig.canvas.manager.key_press_handler_id)
         self.fig.canvas.mpl_connect('pick_event', noraise(self.onpick))
         self.fig.canvas.mpl_connect('key_press_event', noraise(self.onkey))
+        self.fig.canvas.mpl_connect('button_press_event',noraise(self.onclick))
 
         def add_action(name,func,tooltip, **kwargs):
             action = self.fig.canvas.manager.toolbar.addAction(name)
@@ -407,7 +416,7 @@ class DendriteSegmentationTool(object):
         self.fig.canvas.manager.toolbar.addSeparator()
 
         # ============ MASK AND THRESHOLD            =================
-        self.mask_checkable = add_action("Mask", self.toggle_overlay, "Toggle the mask overlay.",
+        self.btn_toggle_mask = add_action("Mask", self.toggle_overlay, "Toggle the mask overlay.",
                                          checkable = True, checked = True)
         def incr(): self.threshold = self.threshold*1.05
         def decr(): self.threshold = self.threshold/1.05
@@ -425,7 +434,7 @@ class DendriteSegmentationTool(object):
                                   canvas = self.fig.canvas,
                                   update = self.fig.canvas.draw,
                                   notify = self.add_polyroi)
-        self.polymask_button = add_action("Poly", self.toggle_polymask_mode, tooltip, checkable = True)
+        self.btn_toggle_polymask = add_action("Poly", self.toggle_polymask_mode, tooltip, checkable = True)
         add_action("<", self.previous_polyroi, "Select the previous freehand polygon mask.")
         add_action(">", self.next_polyroi, "Select the next polygon mask.")
         add_action("del", self.remove_polyroi, "Remove the currently active polygon mask.")
@@ -441,7 +450,7 @@ class DendriteSegmentationTool(object):
                                   canvas = self.fig.canvas,
                                   update = self.fig.canvas.draw,
                                   notify = self.add_pixelroi)
-        self.pixelmask_button = add_action("Pixel", self.toggle_pixelmask_mode, tooltip, checkable = True)
+        self.btn_toggle_pixelmask = add_action("Pixel", self.toggle_pixelmask_mode, tooltip, checkable = True)
         add_action("<", self.previous_pixelroi, "Select the previous pixelmask.")
         add_action(">", self.next_pixelroi, "Select the next pixelmask")
         add_action("del", self.remove_pixelroi, "Remove the currently active pixelmask.")
@@ -463,9 +472,56 @@ class DendriteSegmentationTool(object):
         self.holdbuttons = [(self.hold1, self.axhold1),(self.hold2,self.axhold2),(self.hold3,self.axhold3)]
         self.fig.canvas.manager.toolbar.addSeparator()
 
+        # ================= Post Trace hooks ===================
+        def postapply(cls,trace):
+            import numpy
+            import scipy
+            if self.btn_toggle_detrend.isChecked():
+                if not numpy.isinf(trace).any() and not numpy.isnan(trace).any():
+                    trace = scipy.signal.detrend(trace)
+            if self.btn_toggle_smoothen.isChecked():
+                N = self.spin_smoothen.value()
+                trace = numpy.convolve(trace, numpy.ones(shape = N), mode = 'same') / N
+            return trace
+        Roi.postapply = classmethod(postapply)
+
+        self.btn_toggle_detrend  = add_action('Detrend',self.toggle_filter ,"Apply linear detrend on all traces bevore plotting.",  checkable = True)
+        self.btn_toggle_smoothen = add_action('Smoothen',self.toggle_filter ,"Apply moving average filter with N frames on all traces bevore plotting. Select N with spin box to the right.",  checkable = True)
+        self.spin_smoothen = QtGui.QSpinBox(value = 3)
+        def refresh(arg):
+            if self.btn_toggle_smoothen.isChecked():
+                self.toggle_filter()
+        self.spin_smoothen.setMinimum(2)
+        self.spin_smoothen.setToolTip("Choose the number of frames for the moving average.")
+        self.spin_smoothen.valueChanged.connect(refresh)
+        self.fig.canvas.manager.toolbar.addWidget(self.spin_smoothen)
+
         # finally, select first branch
         self.next_branch()
 
+    def refresh_linescan(self,branch = None):
+        return
+        # TODO: this should actually go into the branch roi, since it requires roi specific artists.
+        if branch is None:
+            branch  = self.active_branch
+        if branch is None:
+            return
+        if len(branch.children) == 0:
+            return
+        linescan = numpy.row_stack((child.trace for child in branch.children))
+        tmax      = self.data.shape[-1]
+        nsegments = len(branch.children)
+        if hasattr(self, "imglinescan"):
+            self.imglinescan.set_data(linescan)
+            self.imglinescan.set_extent((0,tmax,0,nsegments))
+        else:
+            imglinescan = self.axraster.imshow(linescan,interpolation = 'nearest',aspect = 'auto',cmap = 'plasma',picker = True, extent = (0,tmax,0,nsegments))
+            self.imglinescan = imglinescan
+
+    def toggle_filter(self):
+        Roi.tracecache.clear()
+        self.refresh_linescan()
+        self.fig.canvas.draw()
 
     def toggle_polymask_mode(self):
         self.polymask_creator.enabled = not self.polymask_creator.enabled
@@ -476,7 +532,7 @@ class DendriteSegmentationTool(object):
         self.polyrois.append(polyroi)
         self.active_roi = self.polyrois[-1]
         self.polymask_creator.enabled = False
-        self.polymask_button.setChecked(False)
+        self.btn_toggle_polymask.setChecked(False)
 
     def toggle_pixelmask_mode(self):
         self.pixelmask_creator.enabled = not self.pixelmask_creator.enabled
@@ -487,7 +543,7 @@ class DendriteSegmentationTool(object):
         self.pixelrois.append(pixelroi)
         self.active_roi = self.pixelrois[-1]
         self.pixelmask_creator.enabled = False
-        self.pixelmask_button.setChecked(False)
+        self.btn_toggle_pixelmask.setChecked(False)
 
     def remove_pixelroi(self,p = None):
         """remove given or active roi (if p is None) and make the next roi active."""
@@ -517,6 +573,15 @@ class DendriteSegmentationTool(object):
             self.threshold = self.threshold/1.05
         if event.key  == 'm':
             self.toggle_overlay()
+
+    def onclick(self,event):
+        if event.inaxes is self.axraster:
+            print "foo"
+            if self.active_branch is not None:
+                index = int(event.ydata)
+                if index < len(self.active_branch.children):
+                    self.active_roi = self.active_branch.children[index]
+
 
     def onpick(self,event):
         if event.mouseevent.inaxes is self.aximage:
@@ -550,3 +615,4 @@ class DendriteSegmentationTool(object):
                             # found it, make it active
                             self.active_roi = roi
                 # nothing found, ignore it
+
