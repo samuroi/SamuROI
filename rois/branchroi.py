@@ -36,7 +36,7 @@ class BranchRoi(Branch,PolygonRoi):
             linescan = numpy.row_stack((child.trace for child in self.children))
             tmax      = self.datasource.data.shape[-1]
             nsegments = len(self.children)
-            self.imglinescan = self.axes.axraster.imshow(linescan,interpolation = 'nearest',aspect = 'auto',cmap = 'plasma', extent = (0,tmax,nsegments,0))
+            self.imglinescan = self.axes.axraster.imshow(linescan,interpolation = 'nearest',aspect = 'auto',cmap = 'Greens', extent = (0,tmax,nsegments,0))
             self.axes.axraster.set_ylim(nsegments,0)
         elif not active and self.imglinescan is not None:
             self.imglinescan.remove()
@@ -97,3 +97,4 @@ class BranchRoi(Branch,PolygonRoi):
             tmax      = self.datasource.data.shape[-1]
             nsegments = len(self.children)
             self.imglinescan.set_extent((0,tmax,nsegments,0))
+            self.axes.axraster.set_ylim(nsegments,0)
