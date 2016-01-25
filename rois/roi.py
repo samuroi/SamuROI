@@ -120,6 +120,8 @@ class Roi(object):
 
     @active.setter
     def active(self, active):
+        if self.active == active:
+            return
         if active:
             self.traceline, = self.axes.axtraceactive.plot(self.trace, color = self.color)
         else:

@@ -15,6 +15,14 @@ class BranchRoi(Branch,PolygonRoi):
     # override PolygonRoi default thickness for not so thick branches
     thick = 3
 
+    @property
+    def active_segment(self):
+        """The active segment if any, None otherwise."""
+        for i in self.children:
+            if i.active:
+                return i
+        return None
+
     @PolygonRoi.active.setter
     def active(self,active):
         """
@@ -24,12 +32,12 @@ class BranchRoi(Branch,PolygonRoi):
         PolygonRoi.active.fset(self,active)
 
         # plot the linescan
-        if len(self.children) > 0 and active:
+        if len(self.children) > 0 and active and self.imglinescan is None:
             linescan = numpy.row_stack((child.trace for child in self.children))
             tmax      = self.datasource.data.shape[-1]
             nsegments = len(self.children)
-            self.imglinescan = self.axes.axraster.imshow(linescan,interpolation = 'nearest',aspect = 'auto',cmap = 'plasma',picker = True, extent = (0,tmax,0,nsegments))
-            self.axes.axraster.set_ylim(0,nsegments)
+            self.imglinescan = self.axes.axraster.imshow(linescan,interpolation = 'nearest',aspect = 'auto',cmap = 'plasma', extent = (0,tmax,nsegments,0))
+            self.axes.axraster.set_ylim(nsegments,0)
         elif not active and self.imglinescan is not None:
             self.imglinescan.remove()
             self.imglinescan = None
@@ -45,11 +53,17 @@ class BranchRoi(Branch,PolygonRoi):
 
     def next_segment(self):
         if len(self.children) > 0:
+            if self.active_segment is not None:
+                index = self.children.index(self.active_segment)
+                self.__children_cycle.i = index
             return self.__children_cycle.next()
         return None
 
     def previous_segment(self):
         if len(self.children) > 0:
+            if self.active_segment is not None:
+                index = self.children.index(self.active_segment)
+                self.__children_cycle.i = index
             return self.__children_cycle.prev()
         return None
 
@@ -76,3 +90,10 @@ class BranchRoi(Branch,PolygonRoi):
                                 datasource = self.datasource,
                                 axes = self.axes)
                             for child in super(BranchRoi, self).split(length = length)]
+
+        if self.imglinescan is not None:
+            linescan = numpy.row_stack((child.trace for child in self.children))
+            self.imglinescan.set_data(linescan)
+            tmax      = self.datasource.data.shape[-1]
+            nsegments = len(self.children)
+            self.imglinescan.set_extent((0,tmax,nsegments,0))

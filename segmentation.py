@@ -10,6 +10,8 @@ import matplotlib.gridspec as gridspec
 from matplotlib.patches import Circle, Polygon
 from matplotlib.collections import PatchCollection, PolyCollection
 
+from contextlib import contextmanager
+
 import skimage.filters
 import skimage.morphology
 
@@ -53,36 +55,35 @@ class DendriteSegmentationTool(object):
 
     @threshold.setter
     def threshold(self,t):
-        self.__threshold = t
-        elevation_map = skimage.filters.sobel(self.meandata)
+        with self.disable_draw():
+            self.__threshold = t
+            elevation_map = skimage.filters.sobel(self.meandata)
 
-        markers = numpy.zeros_like(self.meandata)
-        markers[self.meandata < self.threshold] = 1
-        markers[self.meandata > self.threshold*1.1] = 2
-        segmentation = skimage.morphology.watershed(elevation_map, markers)
+            markers = numpy.zeros_like(self.meandata)
+            markers[self.meandata < self.threshold] = 1
+            markers[self.meandata > self.threshold*1.1] = 2
+            segmentation = skimage.morphology.watershed(elevation_map, markers)
 
-        overlay = numpy.zeros(shape = self.meandata.shape + (4,),dtype = float)
-        overlay[...,3] = segmentation == 1
-        if not hasattr(self,"overlayimg"):
-            print "plotting overlay"
-            self.overlayimg = self.aximage.imshow(overlay,interpolation = "nearest")
-        else:
-            self.overlayimg.set_data(overlay)
-        self.mask = segmentation == 2
-        # force recalculation of traces
-        PolygonRoi.tracecache.clear()
-        self.refresh_linescan()
-        # set proper ylimit for axtraceactive and axtracehold
-        for ax in [self.axtraceactive] + self.axtracehold:
-            if len(ax.lines) <= 1: continue # skip axes if it only contains one line (the frame marker)
-            ymin,ymax = 0,0
-            for l in ax.lines:
-                x,y = l.get_data()
-                # filter out the vertical frame marker line
-                if len(x) <= 2: continue
-                ymin = min(numpy.min(y),ymin)
-                ymax = max(numpy.max(y),ymax)
-            ax.set_ylim(ymin*0.95,ymax*1.05)
+            overlay = numpy.zeros(shape = self.meandata.shape + (4,),dtype = float)
+            overlay[...,3] = segmentation == 1
+            if not hasattr(self,"overlayimg"):
+                self.overlayimg = self.aximage.imshow(overlay,interpolation = "nearest")
+            else:
+                self.overlayimg.set_data(overlay)
+            self.mask = segmentation == 2
+            # force recalculation of traces
+            PolygonRoi.tracecache.clear()
+            # set proper ylimit for axtraceactive and axtracehold
+            for ax in [self.axtraceactive] + self.axtracehold:
+                if len(ax.lines) <= 1: continue # skip axes if it only contains one line (the frame marker)
+                ymin,ymax = 0,0
+                for l in ax.lines:
+                    x,y = l.get_data()
+                    # filter out the vertical frame marker line
+                    if len(x) <= 2: continue
+                    ymin = min(numpy.min(y),ymin)
+                    ymax = max(numpy.max(y),ymax)
+                ax.set_ylim(ymin*0.95,ymax*1.05)
         self.fig.canvas.draw()
 
     @property
@@ -183,59 +184,58 @@ class DendriteSegmentationTool(object):
     def active_roi(self,p):
         if self.active_roi is p:
             return
-        # TODO check if p is in any of the roi groups
-        before = self.active_roi
+        with self.disable_draw():
+            # TODO check if p is in any of the roi groups
+            before = self.active_roi
 
-        # disable previously active roi
-        if self.active_roi is not None:
-            self.active_roi.active = False
+            # disable previously active roi
+            if self.active_roi is not None:
+                self.active_roi.active = False
 
-        # disable the branch if the active roi is a segment
-        if self.active_segment is not None:
-            self.active_segment.parent.active = False
-
-        # set new active roi
-        self._activeroi = p
-
-        # enable new active roi
-        if p is not None:
-            self.active_roi.active = True
-
-            # enable/disable hold buttons
-            for btn, axes in self.holdbuttons:
-                btn.setEnabled(p is not None)
-                checked = (p is not None) and (axes in p.holdaxes)
-                btn.setChecked(checked)
-
-            # enable branch if active roi is a segment
+            # disable the branch if the active roi is not a segment or a segment of another branch
             if self.active_segment is not None:
-                self.active_segment.parent.active = True
+                if not hasattr(p,"parent") or p.parent is not self.active_segment.parent:
+                    self.active_segment.parent.active = False
 
-        # update the linescan image
-        if self.active_branch is not None and self.active_branch is not before:
-            self.refresh_linescan()
+            # set new active roi
+            self._activeroi = p
+
+            # enable new active roi
+            if p is not None:
+                self.active_roi.active = True
+
+                # enable/disable hold buttons
+                for btn, axes in self.holdbuttons:
+                    btn.setEnabled(p is not None)
+                    checked = (p is not None) and (axes in p.holdaxes)
+                    btn.setChecked(checked)
+
+                # enable branch if active roi is a segment
+                if self.active_segment is not None:
+                    self.active_segment.parent.active = True
 
         self.fig.canvas.draw()
 
 
     @active_frame.setter
     def active_frame(self,f):
-        if not 0 <= f < self.data.shape[2]:
-            raise Exception("Frame needs to be in range [0,{}]".format(self.data.shape[2]))
+        with self.disable_draw():
+            if not 0 <= f < self.data.shape[2]:
+                raise Exception("Frame needs to be in range [0,{}]".format(self.data.shape[2]))
 
-        self.__active_frame = f
-        self.frameimg.set_data(self.data[...,f])
+            self.__active_frame = f
+            self.frameimg.set_data(self.data[...,f])
 
-        # remove the markers
-        if hasattr(self, "_DendriteSegmentationTool__active_frame_lines"):
-            for l in self.__active_frame_lines:
-                l.remove()
+            # remove the markers
+            if hasattr(self, "_DendriteSegmentationTool__active_frame_lines"):
+                for l in self.__active_frame_lines:
+                    l.remove()
 
-        # redraw the markers
-        self.__active_frame_lines = []
-        for ax in [self.axtraceactive] + self.axtracehold:
-            l = ax.axvline(x = f, color = 'black', lw = 1.)
-            self.__active_frame_lines.append(l)
+            # redraw the markers
+            self.__active_frame_lines = []
+            for ax in self.timeaxes:
+                l = ax.axvline(x = f, color = 'black', lw = 1.)
+                self.__active_frame_lines.append(l)
 
         self.fig.canvas.draw()
 
@@ -243,8 +243,9 @@ class DendriteSegmentationTool(object):
         self.show_overlay = not self.show_overlay
 
     def split_branches(self,length = None):
-        for b in self.branches:
-            self.split_branch(b,length)
+        with self.disable_draw():
+            for b in self.branches:
+                self.split_branch(b,length)
         self.fig.canvas.draw()
 
     def split_branch(self,branch = None, length = None):
@@ -260,7 +261,6 @@ class DendriteSegmentationTool(object):
         if branch is not None and branch in self.branches:
             branch.split(length = length)
         if branch.active:
-            self.refresh_linescan()
             self.active_roi = branch.children[0]
 
     def split_segment(self,segment = None, parts = 2):
@@ -296,6 +296,28 @@ class DendriteSegmentationTool(object):
         # make the new segment active
         if segment.parent.active:
             self.active_roi = joined
+
+    @contextmanager
+    def disable_draw(self):
+        # store the original draw method
+        draw = self.fig.canvas.draw
+
+        def noop(*args):
+            pass
+            #print args
+            #print "draw noop"
+
+        # override the draw method as noop
+        self.fig.canvas.draw = noop
+
+        # yield and run code in context
+        #print "<draw noop context"
+        yield
+        #print "<end draw noop context"
+
+        # restore the original behaviour of draw
+        self.fig.canvas.draw = draw
+
 
     def __init__(self, data, swc, mean = None, pmin = 10, pmax = 99):
         """
@@ -499,28 +521,9 @@ class DendriteSegmentationTool(object):
         # finally, select first branch
         self.next_branch()
 
-    def refresh_linescan(self,branch = None):
-        return
-        # TODO: this should actually go into the branch roi, since it requires roi specific artists.
-        if branch is None:
-            branch  = self.active_branch
-        if branch is None:
-            return
-        if len(branch.children) == 0:
-            return
-        linescan = numpy.row_stack((child.trace for child in branch.children))
-        tmax      = self.data.shape[-1]
-        nsegments = len(branch.children)
-        if hasattr(self, "imglinescan"):
-            self.imglinescan.set_data(linescan)
-            self.imglinescan.set_extent((0,tmax,0,nsegments))
-        else:
-            imglinescan = self.axraster.imshow(linescan,interpolation = 'nearest',aspect = 'auto',cmap = 'plasma',picker = True, extent = (0,tmax,0,nsegments))
-            self.imglinescan = imglinescan
-
     def toggle_filter(self):
-        Roi.tracecache.clear()
-        self.refresh_linescan()
+        with self.disable_draw():
+            Roi.tracecache.clear()
         self.fig.canvas.draw()
 
     def toggle_polymask_mode(self):
@@ -576,7 +579,6 @@ class DendriteSegmentationTool(object):
 
     def onclick(self,event):
         if event.inaxes is self.axraster:
-            print "foo"
             if self.active_branch is not None:
                 index = int(event.ydata)
                 if index < len(self.active_branch.children):
