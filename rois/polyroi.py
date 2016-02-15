@@ -15,16 +15,18 @@ class PolygonRoi(Roi):
     thin  = 1
     thick = 5
 
-    colors = ['#CC0099','#CC3300','#99CC00','#00FF00','#006600','#999966']
-    colorcycle = itertools.cycle(colors)
+    #colors = ['#CC0099','#CC3300','#99CC00','#00FF00','#006600','#999966']
+    #colorcycle = itertools.cycle(colors)
 
     @Roi.active.setter
     def active(self,a):
         """ Extend the roi setter to also change linewidth of active artist."""
         if a is True:
             self.artist.set_linewidth(self.thick)
+            self.artist.set_edgecolor('red')
         else:
             self.artist.set_linewidth(self.thin)
+            self.artist.set_edgecolor('gray')
         Roi.active.fset(self,a)
 
     @property
@@ -47,7 +49,7 @@ class PolygonRoi(Roi):
         artist   = Polygon(outline, fill = False,
                                 picker = True,
                                 lw  = self.thin,
-                                color = PolygonRoi.colorcycle.next(),
+                                color = 'gray',# PolygonRoi.colorcycle.next(),
                                 **kwargs)
         artist.roi = self
         super(PolygonRoi,self).__init__(axes = axes, artist = artist)
