@@ -1,5 +1,5 @@
 
-from ..branch  import Branch
+from dumb.util.swc  import Branch
 from .polyroi import PolygonRoi
 
 

@@ -24,7 +24,7 @@ from dumb.util import noraise
 
 from dumb.util import bicyclelist
 
-from .branch import Branch
+from dumb.util.swc import Branch
 
 from .rois.roi import Roi
 from .rois.pixelroi import PixelRoi
