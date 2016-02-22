@@ -3,11 +3,12 @@ from dumb.util.swc  import Branch
 from .polyroi import PolygonRoi
 
 
-class SegmentRoi(Branch,PolygonRoi):
+class SegmentRoi(PolygonRoi):
 
     def __init__(self, branch, datasource, axes, parent, **kwargs):
-        Branch.__init__(self, data = branch)
-        PolygonRoi.__init__(self, outline = self.outline, datasource = datasource, axes = axes, **kwargs)
+        #Branch.__init__(self, data = branch)
+        PolygonRoi.__init__(self, outline = branch.outline, datasource = datasource, axes = axes, **kwargs)
+        self.branch = branch
         #super(SegmentRoi,self).__init__(data = data, axes = axes, **kwargs)
         self.parent = parent
 
@@ -24,11 +25,11 @@ class SegmentRoi(Branch,PolygonRoi):
         i = self.parent.children.index(self)
 
         # split segment and convert new branch objects into segments
-        subsegments = [SegmentRoi(branch = s.data,
+        subsegments = [SegmentRoi(branch = s,
                                   datasource = self.datasource,
                                   parent = self.parent,
                                   axes = self.axes)
-                            for s in super(SegmentRoi, self).split(nsegments = nsegments)]
+                            for s in self.branch.split(nsegments = nsegments)]
 
         for ax in holdaxes:
             for ss in subsegments:
@@ -65,9 +66,9 @@ class SegmentRoi(Branch,PolygonRoi):
             child.remove()
 
         # create joined segment
-        joined = children[s][0].append(children[s][1])
+        joined = children[s][0].branch.append(children[s][1].branch)
         # convert the plain branch into Branch+Artist class
-        joined = SegmentRoi(branch = joined.data,
+        joined = SegmentRoi(branch = joined,
                             datasource = self.datasource,
                             parent = self.parent,
                             axes = self.axes)

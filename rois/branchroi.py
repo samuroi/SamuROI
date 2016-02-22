@@ -1,13 +1,13 @@
 import numpy
 
 
-from dumb.util.swc import Branch
+#from dumb.util.swc import Branch
 from .polyroi import PolygonRoi
 from .segmentroi import SegmentRoi
 
 from dumb.util import bicycle
 
-class BranchRoi(Branch,PolygonRoi):
+class BranchRoi(PolygonRoi):
     """
         Extend the PolygonRoi with children, splitting and segment selection.
     """
@@ -44,8 +44,9 @@ class BranchRoi(Branch,PolygonRoi):
 
 
     def __init__(self, branch, datasource, axes, **kwargs):
-        Branch.__init__(self, data = branch)
-        PolygonRoi.__init__(self, outline = self.outline, datasource = datasource, axes = axes, **kwargs)
+        #Branch.__init__(self, data = branch)
+        PolygonRoi.__init__(self, outline = branch.outline, datasource = datasource, axes = axes, **kwargs)
+        self.branch = branch
         #super(BranchRoi,self).__init__(data, axes = axes, **kwargs)
         self.children = []
         self.imglinescan = None
@@ -85,11 +86,11 @@ class BranchRoi(Branch,PolygonRoi):
 
         # split branch and ist insert childrens
         # do list insertion because this will keep the children_cycle updated
-        self.children[:] = [SegmentRoi(branch = child.data,
+        self.children[:] = [SegmentRoi(branch = child,
                                 parent = self,
                                 datasource = self.datasource,
                                 axes = self.axes)
-                            for child in super(BranchRoi, self).split(length = length)]
+                            for child in self.branch.split(length = length)]
 
         if self.imglinescan is not None:
             linescan = numpy.row_stack((child.trace for child in self.children))

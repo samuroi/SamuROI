@@ -1,4 +1,4 @@
 from .segmentation import DendriteSegmentationTool
-from .branchroi import BranchRoi
-from .segmentroi import SegmentRoi
-from .polyroi import PolygonRoi
+from .rois.branchroi import BranchRoi
+from .rois.segmentroi import SegmentRoi
+from .rois.polyroi import PolygonRoi
