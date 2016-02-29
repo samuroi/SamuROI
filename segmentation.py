@@ -319,6 +319,12 @@ class DendriteSegmentationTool(object):
         self.fig.canvas.draw = draw
 
 
+    def add_branch(self,branch):
+        branchroi = BranchRoi(branch = branch, datasource = self, axes = self)
+        self.branches.append(branchroi)
+        self.fig.canvas.draw()
+
+
     def __init__(self, data, swc, mean = None, pmin = 10, pmax = 99):
         """
             Parameters:
