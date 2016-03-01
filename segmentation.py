@@ -632,3 +632,85 @@ class DendriteSegmentationTool(object):
                             self.active_roi = roi
                 # nothing found, ignore it
 
+
+    def save_hdf5(self, filename, mask = True, data = False):
+        """
+        Create a hdf5 file holding the overlay mask, the rois and the traces of the current setup.
+        The structure of the hdf5 file will be as follows:
+            - mask (dataset, optional, binary mask defined by threshold value, threshold is stored as attribute)
+            - data (dataset, optional, the full 3D dataset from which the traces were generated)
+            - branches (group holding subgroups for each branch)
+                - 0 (group for an individual branch)
+                    - roi (dataset, definition of the branch, (x,y,z,r) tuples)
+                    - trace (dataset, trace of branch)
+                    - linescan (dataset. combined traces of all children of the branch, only present if branch is segmented)
+                    - outline (dataset, Nx2)
+                    - segments (group holding segment subgroups)
+                        - 0 (group for an individual segment)
+                            - roi (dataset, definition of the segment, (x,y,z,r) tuples)
+                            - trace (dataset, trace of segment)
+                            - outline (dataset. Nx2)
+                        - ... (more segments)
+                - ... (more branches)
+            - circles (group holding subgroups for each circle roi)
+                - 0 (group for individual roi)
+                    - roi (dataset, (x,y,r))
+                    - trace (dataset)
+                - ... (more circles)
+            - polygons
+                - 0 (group for individual roi)
+                    - roi (dataset, the outline of the polygon, Nx2)
+                    - trace (dataset)
+                - ... (more polygons)
+            - pixels
+                - 0 (group for individual roi)
+                    - roi (dataset, the pixel coordinates, shape: 2xN)
+                    - trace (dataset)
+                - ... (more pixels)
+        Args:
+            filename: filename to use, suffix ".h5" will be added if missing.
+            mask: flag whether mask should be stored in file. default = True
+            data: flag whether data should be stored in file. default = False
+        """
+        import h5py
+        if '.' not in filename:
+            filename = filename + '.h5'
+        f = h5py.File(filename,mode = 'w')
+        f.clear()
+        if mask:
+            f.create_dataset('mask',data = self.mask)
+            f['mask'].attrs['threshold'] = self.threshold
+        if data:
+            f.create_dataset('data', data = self.data)
+
+        print f.create_group('pixels')
+        for i,m in enumerate(self.pixelrois):
+            f.create_dataset('pixels/'+str(i) + '/roi', data = m.pixels)
+            f.create_dataset('pixels/'+str(i) + '/trace', data = m.trace)
+
+        print f.create_group('polygons')
+        for i,m in enumerate(self.polyrois):
+            f.create_dataset('polygons/'+str(i) + '/roi',data = m.outline)
+            f.create_dataset('polygons/'+str(i) + '/trace',data = m.trace)
+
+        print f.create_group('circles')
+        for i,m in enumerate(getattr(self,"circlerois",[])):
+            f.create_dataset('circles/'+str(i) + '/roi',  data = [m.x,m.y,m.r])
+            f.create_dataset('circles/'+str(i) + '/trace',data = m.trace)
+
+        print f.create_group('branches')
+        for i,b in enumerate(self.branches):
+            f.create_group('branches/{}'.format(i))
+            f.create_dataset('branches/{}/roi'.format(i),    data = b.branch)
+            f.create_dataset('branches/{}/outline'.format(i),data = b.outline)
+            f.create_dataset('branches/{}/trace'.format(i),  data = b.trace)
+            if len(b.children) > 0:
+                f.create_dataset('branches/{}/linescan'.format(i),data = b.linescan)
+            f.create_group('branches/{}/segments'.format(i))
+            for j,s in enumerate(b.children):
+                f.create_group('branches/{}/segments/{}'.format(i,j))
+                f.create_dataset('branches/{}/segments/{}/roi'.format(i,j),    data = s.branch)
+                f.create_dataset('branches/{}/segments/{}/outline'.format(i,j),data = s.outline)
+                f.create_dataset('branches/{}/segments/{}/trace'.format(i,j),  data = s.trace)
+        # write stuff to disc
+        f.close()
