@@ -409,8 +409,9 @@ class DendriteSegmentationTool(object):
         self.fig.canvas.mpl_connect('key_press_event', noraise(self.onkey))
         self.fig.canvas.mpl_connect('button_press_event',noraise(self.onclick))
 
-        def add_action(name,func,tooltip, **kwargs):
-            action = self.fig.canvas.manager.toolbar.addAction(name)
+        def add_action(name, func, toolbar = None, tooltip = "",  **kwargs):
+            toolbar = self.fig.canvas.manager.toolbar if toolbar is None else toolbar
+            action = toolbar.addAction(name)
             action.setToolTip(tooltip)
             # use dumb.noraise to wrap the function in a try/except block
             # that will catch everything and print it to stdout
@@ -420,47 +421,46 @@ class DendriteSegmentationTool(object):
                 action.setProperty(key,value)
             return action
 
-        self.fig.canvas.manager.toolbar.addSeparator()
+        self.toolbar_navigation = self.fig.canvas.manager.toolbar
 
         # ============ BRANCH AND SEGMENT NAVIGATION =================
+        self.toolbar_branch_segment = tb = self.fig.canvas.manager.window.addToolBar("Branch/Segment")
         self.branchmask_creator = BranchMaskCreator(axes = self.aximage, canvas = self.fig.canvas,
                                                      update = self.fig.canvas.draw,
                                                      notify = self.add_branch)
         def enable_branch_mask_creator():
             self.branchmask_creator.enabled = True
-        add_action("<<",self.previous_branch,"Select previous branch.")
+        add_action("<<",self.previous_branch, tb, "Select previous branch.")
         tooltip = "Create a new branch.\n Click for adding new segments, use '+'/'-' keys to adjust segment thicknes.\n Use 'z' key to undo last segment."
-        self.btn_toggle_branchmask = add_action("+", enable_branch_mask_creator, tooltip, checkable = True)
-        add_action(">>",self.next_branch,"Select next branch.")
-        add_action("<",self.next_segment,"Select previous segment.")
-        add_action(">",self.previous_segment,"Select next segment.")
-        self.fig.canvas.manager.toolbar.addSeparator()
+        self.btn_toggle_branchmask = add_action("+", enable_branch_mask_creator,tb,tooltip,checkable = True)
+        add_action(">>",self.next_branch,tb,"Select next branch.")
+        add_action("<",self.next_segment,tb,"Select previous segment.")
+        add_action(">",self.previous_segment,tb,"Select next segment.")
 
-        # ============ BRANCH SPLITTING              =================
-        add_action("split\nbranch", self.split_branch, "Split selected branch.")
-        add_action("split\nall",self.split_branches,"Split all branches.")
+        # ============ BRANCH/SEGMENT SPLITTING      =================
+        self.toolbar_splitting = tb = self.fig.canvas.manager.window.addToolBar("Splitting")
+        add_action("split\nbranch", self.split_branch,tb, "Split selected branch.")
+        add_action("split\nall",self.split_branches,tb,"Split all branches.")
         self.split_length_widget = QtGui.QSpinBox(value = 10)
         self.split_length_widget.setToolTip("Choose the spliting length.")
-        self.fig.canvas.manager.toolbar.addWidget(self.split_length_widget)
-        self.fig.canvas.manager.toolbar.addSeparator()
+        self.toolbar_splitting.addWidget(self.split_length_widget)
+        self.toolbar_splitting.addSeparator()
 
-        # ============ SEGMENT MERGE AND SPLIT       =================
-        #self.fig.canvas.manager.toolbar.addWidget(QtGui.QLabel("Segment:"))
-        add_action("1/2", self.split_segment, "Split selected segment in two equal parts.")
-        add_action("<+",lambda : self.join_segments(next = False), "Merge selected segment with preceeding segment.")
-        add_action("+>",lambda : self.join_segments(next = True), "Merge selected segment with next segment.")
-        self.fig.canvas.manager.toolbar.addSeparator()
+        add_action("1/2", self.split_segment,tb, "Split selected segment in two equal parts.")
+        add_action("<+",lambda : self.join_segments(next = False),tb, "Merge selected segment with preceeding segment.")
+        add_action("+>",lambda : self.join_segments(next = True),tb, "Merge selected segment with next segment.")
 
         # ============ MASK AND THRESHOLD            =================
-        self.btn_toggle_mask = add_action("Mask", self.toggle_overlay, "Toggle the mask overlay.",
+        self.toolbar_mask = tb = self.fig.canvas.manager.window.addToolBar("Mask")
+        self.btn_toggle_mask = add_action("Mask", self.toggle_overlay,tb, "Toggle the mask overlay.",
                                          checkable = True, checked = True)
         def incr(): self.threshold = self.threshold*1.05
         def decr(): self.threshold = self.threshold/1.05
-        add_action("-", decr, "Decrease masking threshold.")
-        add_action("+", incr, "Increase masking thresold.")
-        self.fig.canvas.manager.toolbar.addSeparator()
+        add_action("-", decr,tb, "Decrease masking threshold.")
+        add_action("+", incr,tb, "Increase masking thresold.")
 
         # ============== FREEHAND SELECTION ===================
+        self.toolbar_freehand = tb = self.fig.canvas.manager.window.addToolBar("Freehand")
         tooltip = "Create a freehand polygon mask.\n" + \
                         "If the freehand mode is active each click into the 2D image\n" + \
                         "will add a corner to the polygon. Pressing <enter> will finish\n" + \
@@ -470,13 +470,13 @@ class DendriteSegmentationTool(object):
                                   canvas = self.fig.canvas,
                                   update = self.fig.canvas.draw,
                                   notify = self.add_polyroi)
-        self.btn_toggle_polymask = add_action("Poly", self.toggle_polymask_mode, tooltip, checkable = True)
-        add_action("<", self.previous_polyroi, "Select the previous freehand polygon mask.")
-        add_action(">", self.next_polyroi, "Select the next polygon mask.")
-        add_action("del", self.remove_polyroi, "Remove the currently active polygon mask.")
-        self.fig.canvas.manager.toolbar.addSeparator()
+        self.btn_toggle_polymask = add_action("Poly", self.toggle_polymask_mode,tb, tooltip, checkable = True)
+        add_action("<", self.previous_polyroi,tb, "Select the previous freehand polygon mask.")
+        add_action(">", self.next_polyroi,tb, "Select the next polygon mask.")
+        add_action("del", self.remove_polyroi,tb, "Remove the currently active polygon mask.")
 
         # ============== PIXEL ROI SELECTION ===================
+        self.toolbar_pixel = tb = self.fig.canvas.manager.window.addToolBar("Pixel")
         tooltip = "Create freehand pixel masks.\n" + \
                         "If the freehand mode is active each click into the 2D image\n" + \
                         "will add a pixel to the pixel mask. Pressing <enter> will finish\n" + \
@@ -486,13 +486,13 @@ class DendriteSegmentationTool(object):
                                   canvas = self.fig.canvas,
                                   update = self.fig.canvas.draw,
                                   notify = self.add_pixelroi)
-        self.btn_toggle_pixelmask = add_action("Pixel", self.toggle_pixelmask_mode, tooltip, checkable = True)
-        add_action("<", self.previous_pixelroi, "Select the previous pixelmask.")
-        add_action(">", self.next_pixelroi, "Select the next pixelmask")
-        add_action("del", self.remove_pixelroi, "Remove the currently active pixelmask.")
-        self.fig.canvas.manager.toolbar.addSeparator()
+        self.btn_toggle_pixelmask = add_action("Pixel", self.toggle_pixelmask_mode,tb, tooltip, checkable = True)
+        add_action("<", self.previous_pixelroi,tb, "Select the previous pixelmask.")
+        add_action(">", self.next_pixelroi,tb, "Select the next pixelmask")
+        add_action("del", self.remove_pixelroi,tb, "Remove the currently active pixelmask.")
 
         # ============ TRACE PLOT CONTROL ====================
+        self.toolbar_hold = tb = self.fig.canvas.manager.window.addToolBar("Hold")
         def hold(ax):
             def func():
                 print self.active_roi
@@ -502,13 +502,13 @@ class DendriteSegmentationTool(object):
             return func
         #self.fig.canvas.manager.toolbar.addWidget(QtGui.QLabel("Hold traces:"))
         tooltip =  "Keep the trace of the currently selected segment in one of the hold axes."
-        self.hold1 = add_action("H1", hold(self.axhold1),tooltip, checkable = True, enabled = False)
-        self.hold2 = add_action("H2", hold(self.axhold2),tooltip, checkable = True, enabled = False)
-        self.hold3 = add_action("H3", hold(self.axhold3),tooltip, checkable = True, enabled = False)
+        self.hold1 = add_action("H1", hold(self.axhold1),tb,tooltip, checkable = True, enabled = False)
+        self.hold2 = add_action("H2", hold(self.axhold2),tb,tooltip, checkable = True, enabled = False)
+        self.hold3 = add_action("H3", hold(self.axhold3),tb,tooltip, checkable = True, enabled = False)
         self.holdbuttons = [(self.hold1, self.axhold1),(self.hold2,self.axhold2),(self.hold3,self.axhold3)]
-        self.fig.canvas.manager.toolbar.addSeparator()
 
         # ================= Post Trace hooks ===================
+        self.toolbar_postprocess = tb = self.fig.canvas.manager.window.addToolBar("Postprocessing")
         def postapply(cls,trace):
             import numpy
             import scipy
@@ -521,8 +521,8 @@ class DendriteSegmentationTool(object):
             return trace
         Roi.postapply = classmethod(postapply)
 
-        self.btn_toggle_detrend  = add_action('Detrend',self.toggle_filter ,"Apply linear detrend on all traces bevore plotting.",  checkable = True)
-        self.btn_toggle_smoothen = add_action('Smoothen',self.toggle_filter ,"Apply moving average filter with N frames on all traces bevore plotting. Select N with spin box to the right.",  checkable = True)
+        self.btn_toggle_detrend  = add_action('Detrend',self.toggle_filter ,tb,"Apply linear detrend on all traces bevore plotting.",  checkable = True)
+        self.btn_toggle_smoothen = add_action('Smoothen',self.toggle_filter ,tb,"Apply moving average filter with N frames on all traces bevore plotting. Select N with spin box to the right.",  checkable = True)
         self.spin_smoothen = QtGui.QSpinBox(value = 3)
         def refresh(arg):
             if self.btn_toggle_smoothen.isChecked():
@@ -530,7 +530,7 @@ class DendriteSegmentationTool(object):
         self.spin_smoothen.setMinimum(2)
         self.spin_smoothen.setToolTip("Choose the number of frames for the moving average.")
         self.spin_smoothen.valueChanged.connect(refresh)
-        self.fig.canvas.manager.toolbar.addWidget(self.spin_smoothen)
+        self.toolbar_postprocess.addWidget(self.spin_smoothen)
 
         # finally, select first branch
         self.next_branch()
