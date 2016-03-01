@@ -43,6 +43,7 @@ class PolygonRoi(Roi):
             we can easyly exchange the data in other parts of the application.
         """
         self.datasource = datasource
+        self.outline = outline
         copy = outline.copy()
         copy = copy + 0.5
         self.polymask = copy.view(PolyMask)
