@@ -35,13 +35,6 @@ class DendriteSegmentationTool(object):
     """
     The main class that is doing the event handling, organizes the gui and puts together the plot.
     """
-    @property
-    def split_length(self):
-        return self.split_length_widget.value()
-
-    @split_length.setter
-    def split_length(self,v):
-        self.split_length_widget.setValue(v)
 
     @property
     def threshold(self):
@@ -89,7 +82,6 @@ class DendriteSegmentationTool(object):
         # see if value changed
         b = self.show_overlay
         self.overlayimg.set_visible(v)
-        self.btn_toggle_mask.setChecked(v)
         if (b and not v) or (v and not b):
             self.fig.canvas.draw()
 
@@ -199,7 +191,7 @@ class DendriteSegmentationTool(object):
                 self.active_roi.active = True
 
                 # enable/disable hold buttons
-                for btn, axes in self.holdbuttons:
+                for axes,btn in zip(self.axtracehold,self.toolbar_tracehold.holdbuttons):
                     btn.setEnabled(p is not None)
                     checked = (p is not None) and (axes in p.holdaxes)
                     btn.setChecked(checked)
@@ -236,13 +228,13 @@ class DendriteSegmentationTool(object):
     def toggle_overlay(self):
         self.show_overlay = not self.show_overlay
 
-    def split_branches(self,length = None):
+    def split_branches(self,length):
         with self.disable_draw():
             for b in self.branches:
-                self.split_branch(b,length)
+                self.split_branch(length,b)
         self.fig.canvas.draw()
 
-    def split_branch(self,branch = None, length = None):
+    def split_branch(self, length, branch = None):
         """
             Split one of the root branches into segments.
             Arguments: branch (defaults to active branch)
@@ -250,7 +242,6 @@ class DendriteSegmentationTool(object):
             Returns: nothing
         """
         branch = self.active_branch if branch is None else branch
-        length = self.split_length  if length is None else length
 
         if branch is not None and branch in self.branches:
             branch.split(length = length)
@@ -321,8 +312,6 @@ class DendriteSegmentationTool(object):
         """
         branchroi = BranchRoi(branch = branch, datasource = self, axes = self)
         self.branches.append(branchroi)
-        self.branchmask_creator.enabled = False
-        self.btn_toggle_branchmask.setChecked(False)
         self.fig.canvas.draw()
 
 
@@ -409,158 +398,82 @@ class DendriteSegmentationTool(object):
         self.fig.canvas.mpl_connect('key_press_event', noraise(self.onkey))
         self.fig.canvas.mpl_connect('button_press_event',noraise(self.onclick))
 
-        def add_action(name, func, toolbar = None, tooltip = "",  **kwargs):
-            toolbar = self.fig.canvas.manager.toolbar if toolbar is None else toolbar
-            action = toolbar.addAction(name)
-            action.setToolTip(tooltip)
-            # use dumb.noraise to wrap the function in a try/except block
-            # that will catch everything and print it to stdout
-            # also filter away all args and kwargs which might come from the signal invocation
-            action.triggered.connect(noraise(lambda *args, **kwargs: func()))
-            for key,value in kwargs.iteritems():
-                action.setProperty(key,value)
-            return action
-
         self.toolbar_navigation = self.fig.canvas.manager.toolbar
 
-        # ============ BRANCH AND SEGMENT NAVIGATION =================
-        self.toolbar_branch_segment = tb = self.fig.canvas.manager.window.addToolBar("Branch/Segment")
-        self.branchmask_creator = BranchMaskCreator(axes = self.aximage, canvas = self.fig.canvas,
-                                                     update = self.fig.canvas.draw,
-                                                     notify = self.add_branch)
-        def enable_branch_mask_creator():
-            self.branchmask_creator.enabled = True
-        add_action("<<",self.previous_branch, tb, "Select previous branch.")
-        tooltip = "Create a new branch.\n Click for adding new segments, use '+'/'-' keys to adjust segment thicknes.\n Use 'z' key to undo last segment."
-        self.btn_toggle_branchmask = add_action("+", enable_branch_mask_creator,tb,tooltip,checkable = True)
-        add_action(">>",self.next_branch,tb,"Select next branch.")
-        add_action("<",self.next_segment,tb,"Select previous segment.")
-        add_action(">",self.previous_segment,tb,"Select next segment.")
+        from .toolbars import NavigationToolbar
+        self.toolbar_branch = NavigationToolbar(app = self)
+        self.fig.canvas.manager.window.addToolBar(self.toolbar_branch)
 
-        # ============ BRANCH/SEGMENT SPLITTING      =================
-        self.toolbar_splitting = tb = self.fig.canvas.manager.window.addToolBar("Splitting")
-        add_action("split\nbranch", self.split_branch,tb, "Split selected branch.")
-        add_action("split\nall",self.split_branches,tb,"Split all branches.")
-        self.split_length_widget = QtGui.QSpinBox(value = 10)
-        self.split_length_widget.setToolTip("Choose the spliting length.")
-        self.toolbar_splitting.addWidget(self.split_length_widget)
-        self.toolbar_splitting.addSeparator()
+        from .toolbars import MaskToolbar
+        self.toolbar_mask = MaskToolbar(app = self)
+        self.fig.canvas.manager.window.addToolBar(self.toolbar_mask)
 
-        add_action("1/2", self.split_segment,tb, "Split selected segment in two equal parts.")
-        add_action("<+",lambda : self.join_segments(next = False),tb, "Merge selected segment with preceeding segment.")
-        add_action("+>",lambda : self.join_segments(next = True),tb, "Merge selected segment with next segment.")
+        from .toolbars import SplitJoinToolbar
+        self.toolbar_splitjoin = SplitJoinToolbar(app = self)
+        self.fig.canvas.manager.window.addToolBar(self.toolbar_splitjoin)
 
-        # ============ MASK AND THRESHOLD            =================
-        self.toolbar_mask = tb = self.fig.canvas.manager.window.addToolBar("Mask")
-        self.btn_toggle_mask = add_action("Mask", self.toggle_overlay,tb, "Toggle the mask overlay.",
-                                         checkable = True, checked = True)
-        def incr(): self.threshold = self.threshold*1.05
-        def decr(): self.threshold = self.threshold/1.05
-        add_action("-", decr,tb, "Decrease masking threshold.")
-        add_action("+", incr,tb, "Increase masking thresold.")
+        from .toolbars import ManageRoiToolbar
+        self.toolbar_createroi = ManageRoiToolbar(app = self)
+        self.fig.canvas.manager.window.addToolBar(self.toolbar_createroi)
 
-        # ============== FREEHAND SELECTION ===================
-        self.toolbar_freehand = tb = self.fig.canvas.manager.window.addToolBar("Freehand")
-        tooltip = "Create a freehand polygon mask.\n" + \
-                        "If the freehand mode is active each click into the 2D image\n" + \
-                        "will add a corner to the polygon. Pressing <enter> will finish\n" + \
-                        "(and close) the polygon."
+        from .toolbars import TraceHoldToolbar
+        self.toolbar_tracehold = TraceHoldToolbar(app = self)
+        self.toolbar_tracehold.holdChanged.connect(self.toggle_hold)
+        self.fig.canvas.manager.window.addToolBar(self.toolbar_tracehold)
 
-        self.polymask_creator = PolyMaskCreator(axes = self.aximage,
-                                  canvas = self.fig.canvas,
-                                  update = self.fig.canvas.draw,
-                                  notify = self.add_polyroi)
-        self.btn_toggle_polymask = add_action("Poly", self.toggle_polymask_mode,tb, tooltip, checkable = True)
-        add_action("<", self.previous_polyroi,tb, "Select the previous freehand polygon mask.")
-        add_action(">", self.next_polyroi,tb, "Select the next polygon mask.")
-        add_action("del", self.remove_polyroi,tb, "Remove the currently active polygon mask.")
-
-        # ============== PIXEL ROI SELECTION ===================
-        self.toolbar_pixel = tb = self.fig.canvas.manager.window.addToolBar("Pixel")
-        tooltip = "Create freehand pixel masks.\n" + \
-                        "If the freehand mode is active each click into the 2D image\n" + \
-                        "will add a pixel to the pixel mask. Pressing <enter> will finish\n" + \
-                        "the mask and the next clicks will create another pixel mask."
-
-        self.pixelmask_creator = PixelMaskCreator(axes = self.aximage,
-                                  canvas = self.fig.canvas,
-                                  update = self.fig.canvas.draw,
-                                  notify = self.add_pixelroi)
-        self.btn_toggle_pixelmask = add_action("Pixel", self.toggle_pixelmask_mode,tb, tooltip, checkable = True)
-        add_action("<", self.previous_pixelroi,tb, "Select the previous pixelmask.")
-        add_action(">", self.next_pixelroi,tb, "Select the next pixelmask")
-        add_action("del", self.remove_pixelroi,tb, "Remove the currently active pixelmask.")
-
-        # ============ TRACE PLOT CONTROL ====================
-        self.toolbar_hold = tb = self.fig.canvas.manager.window.addToolBar("Hold")
-        def hold(ax):
-            def func():
-                print self.active_roi
-                if self.active_roi is not None:
-                    self.active_roi.toggle_hold(ax)
-                self.fig.canvas.draw()
-            return func
-        #self.fig.canvas.manager.toolbar.addWidget(QtGui.QLabel("Hold traces:"))
-        tooltip =  "Keep the trace of the currently selected segment in one of the hold axes."
-        self.hold1 = add_action("H1", hold(self.axhold1),tb,tooltip, checkable = True, enabled = False)
-        self.hold2 = add_action("H2", hold(self.axhold2),tb,tooltip, checkable = True, enabled = False)
-        self.hold3 = add_action("H3", hold(self.axhold3),tb,tooltip, checkable = True, enabled = False)
-        self.holdbuttons = [(self.hold1, self.axhold1),(self.hold2,self.axhold2),(self.hold3,self.axhold3)]
-
-        # ================= Post Trace hooks ===================
-        self.toolbar_postprocess = tb = self.fig.canvas.manager.window.addToolBar("Postprocessing")
-        def postapply(cls,trace):
-            import numpy
-            import scipy
-            if self.btn_toggle_detrend.isChecked():
-                if not numpy.isinf(trace).any() and not numpy.isnan(trace).any():
-                    trace = scipy.signal.detrend(trace)
-            if self.btn_toggle_smoothen.isChecked():
-                N = self.spin_smoothen.value()
-                trace = numpy.convolve(trace, numpy.ones(shape = N), mode = 'same') / N
-            return trace
-        Roi.postapply = classmethod(postapply)
-
-        self.btn_toggle_detrend  = add_action('Detrend',self.toggle_filter ,tb,"Apply linear detrend on all traces bevore plotting.",  checkable = True)
-        self.btn_toggle_smoothen = add_action('Smoothen',self.toggle_filter ,tb,"Apply moving average filter with N frames on all traces bevore plotting. Select N with spin box to the right.",  checkable = True)
-        self.spin_smoothen = QtGui.QSpinBox(value = 3)
-        def refresh(arg):
-            if self.btn_toggle_smoothen.isChecked():
-                self.toggle_filter()
-        self.spin_smoothen.setMinimum(2)
-        self.spin_smoothen.setToolTip("Choose the number of frames for the moving average.")
-        self.spin_smoothen.valueChanged.connect(refresh)
-        self.toolbar_postprocess.addWidget(self.spin_smoothen)
+        from .toolbars import PostTraceToolbar
+        self.toolbar_postprocess = PostTraceToolbar(app = self)
+        self.toolbar_postprocess.revalidate.connect(self.toggle_filter)
+        self.fig.canvas.manager.window.addToolBar(self.toolbar_postprocess)
 
         # finally, select first branch
         self.next_branch()
+
+    def post_apply(self,trace):
+        """
+        This is a callback function for the rois. It gets called after trace generation and is responsible for all
+        post processing of traces.
+        Args:
+            trace: The raw trace of the roi
+        Returns:
+            trace: A postprocessed trace of the roi
+
+        """
+
+        import numpy
+        import scipy.signal
+        if self.toolbar_postprocess.toggle_detrend.isChecked():
+            if not numpy.isinf(trace).any() and not numpy.isnan(trace).any():
+                trace = scipy.signal.detrend(trace)
+        if self.toolbar_postprocess.toggle_smoothen.isChecked():
+            N = self.toolbar_postprocess.spin_smoothen.value()
+            trace = numpy.convolve(trace, numpy.ones(shape=N), mode='same') / N
+        return trace
 
     def toggle_filter(self):
         with self.disable_draw():
             Roi.tracecache.clear()
         self.fig.canvas.draw()
 
-    def toggle_polymask_mode(self):
-        self.polymask_creator.enabled = not self.polymask_creator.enabled
+    def toggle_hold(self, ax):
+        if type(ax) is int:
+            ax = self.axtracehold[ax]
+        print self.active_roi
+        if self.active_roi is not None:
+            self.active_roi.toggle_hold(ax)
+            self.fig.canvas.draw()
 
     def add_polyroi(self,x,y):
         polyroi = PolygonRoi(outline = numpy.array([x,y]).T,
                              axes = self, datasource = self)
         self.polyrois.append(polyroi)
         self.active_roi = self.polyrois[-1]
-        self.polymask_creator.enabled = False
-        self.btn_toggle_polymask.setChecked(False)
-
-    def toggle_pixelmask_mode(self):
-        self.pixelmask_creator.enabled = not self.pixelmask_creator.enabled
 
     def add_pixelroi(self,x,y):
         pixelroi = PixelRoi(pixels = [x,y],
                              axes = self, datasource = self)
         self.pixelrois.append(pixelroi)
         self.active_roi = self.pixelrois[-1]
-        self.pixelmask_creator.enabled = False
-        self.btn_toggle_pixelmask.setChecked(False)
 
     def remove_pixelroi(self,p = None):
         """remove given or active roi (if p is None) and make the next roi active."""
@@ -580,6 +493,30 @@ class DendriteSegmentationTool(object):
         p.remove()
         self.polyrois.remove(p)
         self.active_roi = self.polyrois.cur()
+
+    def remove_branch(self, branch = None):
+        if branch is None:
+            branch = self.active_branch
+        if branch is not None:
+            selectnew = branch is self.active_roi
+            branch.remove()
+            self.branches.remove(branch)
+            if selectnew:
+                self.active_roi = self.branches.cur()
+
+    def remove_roi(self,roi):
+        selectnew = roi is self.active_roi
+        if roi in self.branches:
+            self.branches.remove(roi)
+        elif roi in self.polyrois:
+            self.polyrois.remove(roi)
+        elif roi in self.pixelrois:
+            self.pixelrois.remove(roi)
+        else:
+            raise Exception("The given roi is not managed by this Segmentation.")
+        roi.remove()
+        if selectnew:
+            self.active_roi = None
 
     def onkey(self,event):
         if event.inaxes in self.timeaxes and event.key == ' ':

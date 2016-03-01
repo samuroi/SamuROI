@@ -1,0 +1,235 @@
+from PyQt4 import QtGui, QtCore
+
+
+class MaskToolbar(QtGui.QToolBar):
+    def threshold_changed(self, value):
+        self.app.threshold = value
+
+    def __init__(self, app, *args, **kwargs):
+        super(MaskToolbar, self).__init__(*args, **kwargs)
+        self.app = app
+
+        self.btn_toggle = self.addAction("Mask")
+        self.btn_toggle.setToolTip("Toggle the mask overlay.")
+        self.btn_toggle.setCheckable(True)
+        self.btn_toggle.setChecked(self.app.show_overlay)
+        self.btn_toggle.triggered.connect(lambda on: setattr(self.app, "show_overlay", on))
+
+        self.threshold_spin_box = QtGui.QDoubleSpinBox(value=0)
+        self.threshold_spin_box.setRange(0, self.app.threshold * 99)
+        self.threshold_spin_box.setValue(self.app.threshold)
+        self.threshold_spin_box.setAlignment(QtCore.Qt.Alignment(QtCore.Qt.AlignRight))
+        self.threshold_spin_box.setSingleStep(self.app.threshold * .05)
+        self.threshold_spin_box.valueChanged.connect(self.threshold_changed)
+
+        self.addWidget(self.threshold_spin_box)
+
+
+class SplitJoinToolbar(QtGui.QToolBar):
+    def split_single(self):
+        self.app.split_branch(length=self.split_length_widget.value())
+
+    def split_all(self):
+        self.app.split_branches(length=self.split_length_widget.value())
+
+    def __init__(self, app, *args, **kwargs):
+        super(SplitJoinToolbar, self).__init__(*args, **kwargs)
+        self.app = app
+
+        self.btn_split_single = self.addAction("split\nbranch")
+        self.btn_split_single.setToolTip("Split selected branch.")
+        self.btn_split_single.triggered.connect(self.split_single)
+
+        self.btn_split_single = self.addAction("split\nall")
+        self.btn_split_single.setToolTip("Split all branches.")
+        self.btn_split_single.triggered.connect(self.split_all)
+
+        self.split_length_widget = QtGui.QSpinBox(value=5)
+        self.split_length_widget.setToolTip("Choose the spliting length.")
+        self.addWidget(self.split_length_widget)
+
+        self.addSeparator()
+
+        self.btn_split_segment = self.addAction("1/2")
+        self.btn_split_segment.setToolTip("Split selected segment in two equal parts.")
+        self.btn_split_segment.triggered.connect(lambda: self.app.split_segment())
+
+        self.btn_merge_segment_left = self.addAction("<+")
+        self.btn_merge_segment_left.setToolTip("Merge selected segment with preceeding segment.")
+        self.btn_merge_segment_left.triggered.connect(lambda: self.app.join_segments(next=False))
+
+        self.btn_merge_segment_right = self.addAction("+>")
+        self.btn_merge_segment_right.setToolTip("Merge selected segment with next segment.")
+        self.btn_merge_segment_right.triggered.connect(lambda: self.app.join_segments(next=True))
+
+
+class NavigationToolbar(QtGui.QToolBar):
+    @property
+    def rois(self):
+        return self.app.branches + self.app.pixelrois + self.app.polyrois
+
+    def next_roi(self):
+        self.index = (self.index + 1) % len(self.rois)
+        if len(self.rois) > self.index:
+            self.app.active_roi = self.rois[self.index]
+
+    def previous_roi(self):
+        self.index = (self.index - 1) if self.index > 0 else (len(self.rois) - 1)
+        if len(self.rois) > self.index:
+            self.app.active_roi = self.rois[self.index]
+
+    def __init__(self, app, *args, **kwargs):
+        super(NavigationToolbar, self).__init__(*args, **kwargs)
+
+        self.app = app
+        self.index = 0
+        """The index of the rois that is currently selected"""
+
+        self.btn_prev_roi = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSkipBackward), "<<")
+        self.btn_prev_roi.triggered.connect(self.previous_roi)
+        self.btn_prev_roi.setToolTip("Select next roi.")
+
+        self.btn_prev_seg = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSeekBackward), "<")
+        self.btn_prev_seg.triggered.connect(self.app.previous_segment)
+        self.btn_prev_seg.setToolTip("Select next segment.")
+
+        self.btn_next_seg = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSeekForward), ">")
+        self.btn_next_seg.triggered.connect(self.app.next_segment)
+        self.btn_next_seg.setToolTip("Select previous segment.")
+
+        self.btn_next_roi = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSkipForward), ">>")
+        self.btn_next_roi.triggered.connect(self.next_roi)
+        self.btn_next_roi.setToolTip("Select previous roi.")
+
+
+class ManageRoiToolbar(QtGui.QToolBar):
+    def add_branch(self, *args):
+        self.branchmask_creator.enabled = False
+        self.add_branchmask.setChecked(False)
+        self.app.add_branch(*args)
+
+    def add_polyroi(self, *args):
+        self.polymask_creator.enabled = False
+        self.add_polymask.setChecked(False)
+        self.app.add_polyroi(*args)
+
+    def add_pixelroi(self, *args):
+        self.pixelmask_creator.enabled = False
+        self.add_pixelmask.setChecked(False)
+        self.app.add_pixelroi(*args)
+
+    def remove_roi(self):
+        if self.app.active_branch is not None:
+            self.app.remove_roi(self.app.active_branch)
+        elif self.app.active_pixelroi is not None:
+            self.app.remove_roi(self.app.active_pixelroi)
+        elif self.app.active_polyroi is not None:
+            self.app.remove_roi(self.app.active_polyroi)
+
+    def __init__(self, app, *args, **kwargs):
+        super(ManageRoiToolbar, self).__init__(*args, **kwargs)
+
+        self.app = app
+
+        from .pixelmaskcreator import PixelMaskCreator
+        self.pixelmask_creator = PixelMaskCreator(axes=app.aximage,
+                                                  canvas=app.fig.canvas,
+                                                  update=app.fig.canvas.draw,
+                                                  notify=self.add_pixelroi)
+        tooltip = "Create freehand pixel masks. \n" + \
+                  "If the freehand mode is active each click into the 2D image\n" + \
+                  "will add a pixel to the pixel mask. Pressing <enter> will finish\n" + \
+                  "the mask and the next clicks will create another pixel mask."
+        self.add_pixelmask = self.addAction("P")
+        self.add_pixelmask.setCheckable(True)
+        self.add_pixelmask.setToolTip(tooltip)
+        self.add_pixelmask.triggered.connect(lambda: setattr(self.pixelmask_creator, 'enabled', True))
+
+        from .branchmaskcreator import BranchMaskCreator
+        self.branchmask_creator = BranchMaskCreator(axes=app.aximage, canvas=app.fig.canvas,
+                                                    update=app.fig.canvas.draw,
+                                                    notify=self.add_branch)
+        tooltip = "Create a new branch. \n" + \
+                  "Click for adding new segments, use '+'/'-' keys to adjust segment thicknes. \n" + \
+                  "Use 'z' key to undo last segment."
+        self.add_branchmask = self.addAction("B")
+        self.add_branchmask.setCheckable(True)
+        self.add_branchmask.setToolTip(tooltip)
+        self.add_branchmask.triggered.connect(lambda: setattr(self.branchmask_creator, 'enabled', True))
+
+        from .polymaskcreator import PolyMaskCreator
+        self.polymask_creator = PolyMaskCreator(axes=app.aximage,
+                                                canvas=app.fig.canvas,
+                                                update=app.fig.canvas.draw,
+                                                notify=self.add_polyroi)
+
+        tooltip = "Create a freehand polygon mask. \n" + \
+                  "If the freehand mode is active each click into the 2D image\n" + \
+                  "will add a corner to the polygon. Pressing <enter> will finish\n" + \
+                  "(and close) the polygon."
+        self.add_polymask = self.addAction('F')
+        self.add_polymask.setCheckable(True)
+        self.add_polymask.setToolTip(tooltip)
+        self.add_polymask.triggered.connect(lambda: setattr(self.polymask_creator, 'enabled', True))
+
+        tooltip = "Delete/remove the currently selected roi."
+
+        self.remove_mask = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_DialogDiscardButton),'X')
+        self.remove_mask.setToolTip(tooltip)
+        self.remove_mask.triggered.connect(self.remove_roi)
+
+
+class TraceHoldToolbar(QtGui.QToolBar):
+    # This defines a signal called 'closed' that takes no arguments.
+    holdChanged = QtCore.pyqtSignal(int)
+
+    def proxy(self, num):
+        def fun():
+            self.holdChanged.emit(num)
+
+        return fun
+
+    def __init__(self, app, *args, **kwargs):
+        super(TraceHoldToolbar, self).__init__(*args, **kwargs)
+
+        tooltip = "Keep the trace of the currently selected segment in one of the hold axes."
+        self.holdbuttons = []
+        for i in range(3):
+            action = self.addAction("H" + str(i))
+            action.setToolTip(tooltip)
+            action.setCheckable(True)
+            action.setEnabled(False)
+            action.triggered.connect(self.proxy(i))
+            self.holdbuttons.append(action)
+
+
+class PostTraceToolbar(QtGui.QToolBar):
+    # This defines a signal called 'revalidate' that takes no arguments.
+    revalidate = QtCore.pyqtSignal()
+
+    def spin_smoothen_changed(self, value):
+        if self.toggle_smoothen.isChecked():
+            self.revalidate.emit()
+
+    def __init__(self, app, *args, **kwargs):
+        super(PostTraceToolbar, self).__init__(*args, **kwargs)
+
+        self.toggle_detrend = self.addAction("Detrend")
+        self.toggle_detrend.setToolTip("Apply linear detrend on all traces bevore plotting.")
+        self.toggle_detrend.setCheckable(True)
+        self.toggle_detrend.triggered.connect(self.revalidate.emit)
+
+        self.toggle_smoothen = self.addAction("Smoothen")
+        tooltip = "Apply moving average filter with N frames on all traces bevore plotting. \n" + \
+                  "Select N with spin box to the right."
+        self.toggle_smoothen.setToolTip(tooltip)
+
+        self.toggle_smoothen.setCheckable(True)
+        self.toggle_smoothen.triggered.connect(self.revalidate.emit)
+
+        self.spin_smoothen = QtGui.QSpinBox(value=3)
+
+        self.spin_smoothen.setMinimum(2)
+        self.spin_smoothen.setToolTip("Choose the number of frames for the moving average.")
+        self.spin_smoothen.valueChanged.connect(self.spin_smoothen_changed)
+        self.addWidget(self.spin_smoothen)

@@ -50,13 +50,7 @@ class Roi(object):
     def trace(self):
         if self not in Roi.tracecache:
             t = self.applymask()
-            # TODO for now, the postappy is a class function
-            # a cleaner approach would be to make this a member function, but this requires
-            # more intrusive changes on the frontend side (i.e. loop all rois and adopt filter function)
-            if hasattr(Roi,"postapply"):
-                Roi.tracecache[self] = Roi.postapply(t)
-            else:
-                Roi.tracecache[self] = t
+            Roi.tracecache[self] = self.axes.post_apply(t)
         return Roi.tracecache[self]
 
     def relim(self,axes):
