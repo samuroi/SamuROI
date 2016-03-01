@@ -63,7 +63,7 @@ class BranchMaskCreator(MaskCreator):
         # check if this is the first point of a branch
         if self.artist is None:
             self.artist = Circle([self.x[0],self.y[0]], radius = self.r[0], fill = False,
-                            lw  = 2, color = 'gray')
+                            lw  = 2, color = 'red')
             self.axes.add_artist(self.artist)
         elif len(self.x) == 0:
             self.artist.remove()
@@ -74,7 +74,7 @@ class BranchMaskCreator(MaskCreator):
         elif len(self.x) == 2:
             self.artist.remove()
             branch = Branch(None,self.x,self.y,[0 for i in self.x], self.r)
-            self.artist = Polygon(branch.outline, fill = False, color = 'gray',lw = 2)
+            self.artist = Polygon(branch.outline, fill = False, color = 'red',lw = 2)
             self.axes.add_artist(self.artist)
         else:
             assert(len(self.x)>2)
