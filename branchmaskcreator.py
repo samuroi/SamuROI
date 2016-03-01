@@ -87,9 +87,11 @@ class BranchMaskCreator(MaskCreator):
             if event.key == '+':
                 self.r[-1] = self.r[-1] + 1
                 self.__update_artist()
+                self.update()
             elif event.key == '-':
                 self.r[-1] = self.r[-1] - 1
                 self.__update_artist()
+                self.update()
             elif event.key == 'z':
                 print event
                 print dir(event)
@@ -105,3 +107,4 @@ class BranchMaskCreator(MaskCreator):
                 branch = Branch(None,self.x,self.y,[0 for i in self.x], self.r)
                 self.x,self.y,self.r = [],[],[]
                 self.notify(branch)
+                self.enabled = False

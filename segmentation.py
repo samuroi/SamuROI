@@ -1,5 +1,4 @@
 import numpy
-import scipy
 import skimage
 import matplotlib
 import itertools
@@ -7,24 +6,14 @@ import itertools
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
-from matplotlib.patches import Circle, Polygon
-from matplotlib.collections import PatchCollection, PolyCollection
-
 from contextlib import contextmanager
 
 import skimage.filters
 import skimage.morphology
 
-from dumb.util import find_events
-from dumb.util import baseline
-from dumb.util import deltaF
-from dumb.util import bicycle
-from dumb.util import PolyMask
 from dumb.util import noraise
 
 from dumb.util import bicyclelist
-
-from dumb.util.swc import Branch
 
 from .rois.roi import Roi
 from .rois.pixelroi import PixelRoi
@@ -34,8 +23,13 @@ from .rois.segmentroi import SegmentRoi
 
 from .pixelmaskcreator import PixelMaskCreator
 from .polymaskcreator import PolyMaskCreator
+from .branchmaskcreator import BranchMaskCreator
 
 from PyQt4 import QtGui
+
+
+#TODO masks for branches with only one line aka 0 segments aka spines
+
 
 class DendriteSegmentationTool(object):
     """
@@ -320,18 +314,26 @@ class DendriteSegmentationTool(object):
 
 
     def add_branch(self,branch):
+        """
+        Add a new branch to the list of managed branches.
+        Args:
+            branch: The branch to add. Expected to be of type swc.Branch.
+        """
         branchroi = BranchRoi(branch = branch, datasource = self, axes = self)
         self.branches.append(branchroi)
+        self.branchmask_creator.enabled = False
+        self.btn_toggle_branchmask.setChecked(False)
         self.fig.canvas.draw()
 
 
     def __init__(self, data, swc, mean = None, pmin = 10, pmax = 99):
         """
-            Parameters:
-                data:  The 3D dataset
-                swc:   SWC File that allows looping over branches.
-                mean:  Background image. Defaults to data.mean(axis = -1)
-                pmin,pmax: Percentiles for color range. I.e. the color range for mean and data will start at pmin %
+        Create and show the gui for data analysis.
+        Args:
+            data:  The 3D dataset
+            swc:   SWC File that allows looping over branches.
+            mean: Background image. Defaults to data.mean(axis = -1)
+            pmin,pmax: Percentiles for color range. I.e. the color range for mean and data will start at pmin %
                            and reach up to pmax %. Defaults to (10,99)
         """
         self.data = data
@@ -421,8 +423,14 @@ class DendriteSegmentationTool(object):
         self.fig.canvas.manager.toolbar.addSeparator()
 
         # ============ BRANCH AND SEGMENT NAVIGATION =================
-        def _setactive(func): self.active_roi = func()
+        self.branchmask_creator = BranchMaskCreator(axes = self.aximage, canvas = self.fig.canvas,
+                                                     update = self.fig.canvas.draw,
+                                                     notify = self.add_branch)
+        def enable_branch_mask_creator():
+            self.branchmask_creator.enabled = True
         add_action("<<",self.previous_branch,"Select previous branch.")
+        tooltip = "Create a new branch.\n Click for adding new segments, use '+'/'-' keys to adjust segment thicknes.\n Use 'z' key to undo last segment."
+        self.btn_toggle_branchmask = add_action("+", enable_branch_mask_creator, tooltip, checkable = True)
         add_action(">>",self.next_branch,"Select next branch.")
         add_action("<",self.next_segment,"Select previous segment.")
         add_action(">",self.previous_segment,"Select next segment.")
@@ -576,9 +584,9 @@ class DendriteSegmentationTool(object):
     def onkey(self,event):
         if event.inaxes in self.timeaxes and event.key == ' ':
             self.active_frame = int(event.xdata)
-        if event.key == '+':
+        if event.key == '+' and not self.branchmask_creator.enabled:
             self.threshold = self.threshold*1.05
-        if event.key == '-':
+        if event.key == '-' and not self.branchmask_creator.enabled:
             self.threshold = self.threshold/1.05
         if event.key  == 'm':
             self.toggle_overlay()
