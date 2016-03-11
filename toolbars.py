@@ -106,7 +106,7 @@ class ManageRoiToolbar(QtGui.QToolBar):
     def add_branch(self, *args):
         self.branchmask_creator.enabled = False
         self.add_branchmask.setChecked(False)
-        self.app.add_branch(*args)
+        self.app.add_branchroi(*args)
 
     def add_polyroi(self, *args):
         self.polymask_creator.enabled = False

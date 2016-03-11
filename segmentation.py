@@ -304,17 +304,6 @@ class DendriteSegmentationTool(object):
         self.fig.canvas.draw = draw
 
 
-    def add_branch(self,branch):
-        """
-        Add a new branch to the list of managed branches.
-        Args:
-            branch: The branch to add. Expected to be of type swc.Branch.
-        """
-        branchroi = BranchRoi(branch = branch, datasource = self, axes = self)
-        self.branches.append(branchroi)
-        self.fig.canvas.draw()
-
-
     def __init__(self, data, swc, mean = None, pmin = 10, pmax = 99):
         """
         Create and show the gui for data analysis.
@@ -381,9 +370,7 @@ class DendriteSegmentationTool(object):
         self.colors = ['#CC0099','#CC3300','#99CC00','#00FF00','#006600','#999966']
         self.colorcycle = itertools.cycle(self.colors)
 
-        # get all parts from the swc file that have at least one segment
-        branches = [BranchRoi(branch = b, datasource = self, axes = self) for b in swc.branches if len(b) > 1]
-        self.branches = bicyclelist(branches)
+        self.branches = bicyclelist()
         """ The list which stores the branches loaded from swc. This list should not be modified"""
 
         self.polyrois = bicyclelist()
@@ -391,6 +378,12 @@ class DendriteSegmentationTool(object):
 
         self.pixelrois = bicyclelist()
         """ The list which stores the pixel mask rois. Use app.add_pixelmask(roi) and app.remove_pixelmask(roi) to modify list."""
+
+        # get all parts from the swc file that have at least one segment
+        if swc is not None:
+            for b in swc.branches:
+                if len(b) > 1:
+                    self.add_branchroi(b)
 
         self.fig.canvas.set_window_title('DendriteSegmentationTool')
         #self.fig.canvas.mpl_disconnect(self.fig.canvas.manager.key_press_handler_id)
@@ -462,6 +455,16 @@ class DendriteSegmentationTool(object):
         if self.active_roi is not None:
             self.active_roi.toggle_hold(ax)
             self.fig.canvas.draw()
+
+    def add_branchroi(self, branch):
+        """
+        Add a new branch to the list of managed branches.
+        Args:
+            branch: The branch to add. Expected to be of type swc.Branch.
+        """
+        branchroi = BranchRoi(branch = branch, datasource = self, axes = self)
+        self.branches.append(branchroi)
+        self.fig.canvas.draw()
 
     def add_polyroi(self,x,y):
         polyroi = PolygonRoi(outline = numpy.array([x,y]).T,
@@ -651,3 +654,20 @@ class DendriteSegmentationTool(object):
                 f.create_dataset('branches/{}/segments/{}/trace'.format(i,j),  data = s.trace)
         # write stuff to disc
         f.close()
+
+
+    #TODO status bar which denotes the roi which is active (number and type)
+
+    # TODO
+    def load_hdf5(self,filename, data = False, mask = True, branches = True, circles = True):
+        """
+
+        Args:
+            filename:
+            mask:
+            branches:
+            circles:
+
+        Returns:
+
+        """
