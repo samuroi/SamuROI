@@ -27,7 +27,8 @@ class MaskToolbar(QtGui.QToolBar):
 
 class SplitJoinToolbar(QtGui.QToolBar):
     def split_single(self):
-        self.app.split_branch(length=self.split_length_widget.value())
+        if self.app.active_branch is not None:
+            self.app.split_branch(length=self.split_length_widget.value(), branch = self.app.active_branch)
 
     def split_all(self):
         self.app.split_branches(length=self.split_length_widget.value())
@@ -64,20 +65,6 @@ class SplitJoinToolbar(QtGui.QToolBar):
 
 
 class NavigationToolbar(QtGui.QToolBar):
-    @property
-    def rois(self):
-        return self.app.branches + self.app.pixelrois + self.app.polyrois
-
-    def next_roi(self):
-        self.index = (self.index + 1) % len(self.rois)
-        if len(self.rois) > self.index:
-            self.app.active_roi = self.rois[self.index]
-
-    def previous_roi(self):
-        self.index = (self.index - 1) if self.index > 0 else (len(self.rois) - 1)
-        if len(self.rois) > self.index:
-            self.app.active_roi = self.rois[self.index]
-
     def __init__(self, app, *args, **kwargs):
         super(NavigationToolbar, self).__init__(*args, **kwargs)
 
@@ -86,7 +73,7 @@ class NavigationToolbar(QtGui.QToolBar):
         """The index of the rois that is currently selected"""
 
         self.btn_prev_roi = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSkipBackward), "<<")
-        self.btn_prev_roi.triggered.connect(self.previous_roi)
+        self.btn_prev_roi.triggered.connect(self.app.previous_roi)
         self.btn_prev_roi.setToolTip("Select next roi.")
 
         self.btn_prev_seg = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSeekBackward), "<")
@@ -98,15 +85,18 @@ class NavigationToolbar(QtGui.QToolBar):
         self.btn_next_seg.setToolTip("Select previous segment.")
 
         self.btn_next_roi = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSkipForward), ">>")
-        self.btn_next_roi.triggered.connect(self.next_roi)
+        self.btn_next_roi.triggered.connect(self.app.next_roi)
         self.btn_next_roi.setToolTip("Select previous roi.")
 
 
 class ManageRoiToolbar(QtGui.QToolBar):
-    def add_branch(self, *args):
+    def add_branch(self, branch):
         self.branchmask_creator.enabled = False
         self.add_branchmask.setChecked(False)
-        self.app.add_branchroi(*args)
+        if len(branch) == 1:
+            self.app.add_circleroi(center=branch[['x','y']][0], radius=branch['radius'][0])
+        else:
+            self.app.add_branchroi(branch)
 
     def add_polyroi(self, *args):
         self.polymask_creator.enabled = False
@@ -119,12 +109,8 @@ class ManageRoiToolbar(QtGui.QToolBar):
         self.app.add_pixelroi(*args)
 
     def remove_roi(self):
-        if self.app.active_branch is not None:
-            self.app.remove_roi(self.app.active_branch)
-        elif self.app.active_pixelroi is not None:
-            self.app.remove_roi(self.app.active_pixelroi)
-        elif self.app.active_polyroi is not None:
-            self.app.remove_roi(self.app.active_polyroi)
+        if self.app.active_roi is not None:
+            self.app.remove_roi(self.app.active_roi)
 
     def __init__(self, app, *args, **kwargs):
         super(ManageRoiToolbar, self).__init__(*args, **kwargs)
