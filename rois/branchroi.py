@@ -80,10 +80,16 @@ class BranchRoi(PolygonRoi):
         # Since the notify will also be called for branch rois if relevant data has changed, we can use the
         # branchrois notify call to update all segments of the branch immediately.
         # since the segments will have their results cached the overhead should be minimal.
-        if self.imglinescan is not None:
-            linescan = numpy.row_stack((child.trace for child in self.children))
-            self.imglinescan.set_data(linescan)
         PolygonRoi.notify(self)
+        if self.imglinescan is not None:
+            ls = self.linescan
+            self.imglinescan.set_data(ls)
+            self.imglinescan.set_clim(ls.min(),ls.max())
+
+    def remove(self):
+        for child in self.children:
+            child.remove()
+        PolygonRoi.remove(self)
 
     def split(self, length):
         """Only supported if self is a root item."""
@@ -99,8 +105,7 @@ class BranchRoi(PolygonRoi):
                             for child in self.branch.split(length = length)]
 
         if self.imglinescan is not None:
-            linescan = numpy.row_stack((child.trace for child in self.children))
-            self.imglinescan.set_data(linescan)
+            self.imglinescan.set_data(self.linescan)
             tmax      = self.datasource.data.shape[-1]
             nsegments = len(self.children)
             self.imglinescan.set_extent((0,tmax,nsegments,0))
