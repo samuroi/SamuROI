@@ -42,6 +42,32 @@ class DendriteSegmentationTool(object):
     """
 
     @property
+    def data(self):
+        # if not hasattr(self,'_DendriteSegmentationTool__data'):
+        #     self.__data = numpy.ndarray(shape = self.data.shape[0:2],dtype = bool)
+        return self.__data
+
+    @data.setter
+    def data(self, d):
+        self.__data = d
+
+        # force recalculation of traces
+        with self.disable_draw():
+            PolygonRoi.tracecache.clear()
+            # set proper ylimit for axtraceactive and axtracehold
+            for ax in [self.axtraceactive] + self.axtracehold:
+                if len(ax.lines) <= 1: continue # skip axes if it only contains one line (the frame marker)
+                ymin,ymax = 0,0
+                for l in ax.lines:
+                    x,y = l.get_data()
+                    # filter out the vertical frame marker line
+                    if len(x) <= 2: continue
+                    ymin = min(numpy.min(y),ymin)
+                    ymax = max(numpy.max(y),ymax)
+                ax.set_ylim(ymin*0.95,ymax*1.05)
+        self.fig.canvas.draw()
+
+    @property
     def mask(self):
         if not hasattr(self,'_DendriteSegmentationTool__mask'):
             self.__mask = numpy.ndarray(shape = self.data.shape[0:2],dtype = bool)
@@ -79,6 +105,8 @@ class DendriteSegmentationTool(object):
                     ymax = max(numpy.max(y),ymax)
                 ax.set_ylim(ymin*0.95,ymax*1.05)
         self.fig.canvas.draw()
+
+
 
     @property
     def threshold(self):
@@ -386,10 +414,6 @@ class DendriteSegmentationTool(object):
             pmin,pmax: Percentiles for color range. I.e. the color range for mean and data will start at pmin %
                            and reach up to pmax %. Defaults to (10,99)
         """
-        self.data = data
-        self.swc = swc
-        self.meandata = numpy.mean(data,axis = -1) if mean is None else mean
-
         self.fig = plt.figure()
 
         self.gs = gridspec.GridSpec(2, 1, height_ratios = [.3,.7])
@@ -415,8 +439,9 @@ class DendriteSegmentationTool(object):
         for ax in self.timeaxes:
             ax.set_xlim(0,data.shape[-1])
 
-        dx = data.shape[1]*0.26666
-        dy = data.shape[0]*0.26666
+        self.data = data
+        self.meandata = numpy.mean(data,axis = -1) if mean is None else mean
+
         vmin,vmax = numpy.percentile(self.meandata.flatten(), q = [pmin,pmax])
         self.meanimg  = self.aximage.imshow(self.meandata,cmap = matplotlib.cm.gray,
                                         interpolation='nearest',vmin = vmin,vmax = vmax)
