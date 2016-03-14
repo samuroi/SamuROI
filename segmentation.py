@@ -517,6 +517,11 @@ class DendriteSegmentationTool(object):
         self.toolbar_postprocess.revalidate.connect(self.toggle_filter)
         self.fig.canvas.manager.window.addToolBar(self.toolbar_postprocess)
 
+        from .filemenu import FileMenu
+        menubar = self.fig.canvas.manager.window.menuBar()
+        self.file_menu = FileMenu(app = self)
+        menubar.addMenu(self.file_menu)
+
         # get all parts from the swc file that have at least one segment
         if swc is not None:
             for b in swc.branches:
@@ -695,7 +700,7 @@ class DendriteSegmentationTool(object):
                     self.active_segment = roi
 
 
-    def save_hdf5(self, filename, mask = True, data = False):
+    def save_hdf5(self, filename, mask = True, pixels = True, branches = True, circles = True, freehands = True, data = False, traces = True):
         """
         Create a hdf5 file holding the overlay mask, the rois and the traces of the current setup.
         The structure of the hdf5 file will be as follows:
@@ -719,7 +724,7 @@ class DendriteSegmentationTool(object):
                     - roi (dataset, (x,y,r))
                     - trace (dataset)
                 - ... (more circles)
-            - polygons
+            - freehands
                 - 0 (group for individual roi)
                     - roi (dataset, the outline of the polygon, Nx2)
                     - trace (dataset)
@@ -735,8 +740,6 @@ class DendriteSegmentationTool(object):
             data: flag whether data should be stored in file. default = False
         """
         import h5py
-        if '.' not in filename:
-            filename = filename + '.h5'
         f = h5py.File(filename,mode = 'w')
         f.clear()
         if mask:
@@ -745,41 +748,50 @@ class DendriteSegmentationTool(object):
         if data:
             f.create_dataset('data', data = self.data)
 
-        print f.create_group('pixels')
-        for i,m in enumerate(self.pixelrois):
-            f.create_dataset('pixels/'+str(i) + '/roi', data = m.pixels)
-            f.create_dataset('pixels/'+str(i) + '/trace', data = m.trace)
+        if pixels:
+            f.create_group('pixels')
+            for i,m in enumerate(self.pixelrois):
+                f.create_dataset('pixels/'+str(i) + '/roi', data = m.pixels)
+                if traces:
+                    f.create_dataset('pixels/'+str(i) + '/trace', data = m.trace)
 
-        print f.create_group('polygons')
-        for i,m in enumerate(self.polyrois):
-            f.create_dataset('polygons/'+str(i) + '/roi',data = m.outline)
-            f.create_dataset('polygons/'+str(i) + '/trace',data = m.trace)
+        if freehands:
+            f.create_group('freehands')
+            for i,m in enumerate(self.polyrois):
+                f.create_dataset('freehands/'+str(i) + '/roi',data = m.outline)
+                if traces:
+                    f.create_dataset('freehands/'+str(i) + '/trace',data = m.trace)
 
-        print f.create_group('circles')
-        for i,m in enumerate(getattr(self,"circlerois",[])):
-            f.create_dataset('circles/'+str(i) + '/roi',  data = [m.x,m.y,m.r])
-            f.create_dataset('circles/'+str(i) + '/trace',data = m.trace)
-            assert(True)
+        if circles:
+            f.create_group('circles')
+            for i,m in enumerate(self.circlerois):
+                data = [m.center[0],m.center[1],m.radius]
+                f.create_dataset('circles/'+str(i) + '/roi',  data = data)
+                if traces:
+                    f.create_dataset('circles/'+str(i) + '/trace',data = m.trace)
 
-        print f.create_group('branches')
-        for i,b in enumerate(self.branches):
-            f.create_group('branches/{}'.format(i))
-            f.create_dataset('branches/{}/roi'.format(i),    data = b.branch)
-            f.create_dataset('branches/{}/outline'.format(i),data = b.outline)
-            f.create_dataset('branches/{}/trace'.format(i),  data = b.trace)
-            if len(b.children) > 0:
-                f.create_dataset('branches/{}/linescan'.format(i),data = b.linescan)
-            f.create_group('branches/{}/segments'.format(i))
-            for j,s in enumerate(b.children):
-                f.create_group('branches/{}/segments/{}'.format(i,j))
-                f.create_dataset('branches/{}/segments/{}/roi'.format(i,j),    data = s.branch)
-                f.create_dataset('branches/{}/segments/{}/outline'.format(i,j),data = s.outline)
-                f.create_dataset('branches/{}/segments/{}/trace'.format(i,j),  data = s.trace)
+
+        if branches:
+            for i,b in enumerate(self.branches):
+                f.create_group('branches/{}'.format(i))
+                f.create_dataset('branches/{}/roi'.format(i),    data = b.branch)
+                f.create_dataset('branches/{}/outline'.format(i),data = b.outline)
+                if traces:
+                    f.create_dataset('branches/{}/trace'.format(i),  data = b.trace)
+                if len(b.children) > 0:
+                    f.create_dataset('branches/{}/linescan'.format(i),data = b.linescan)
+                f.create_group('branches/{}/segments'.format(i))
+                for j,s in enumerate(b.children):
+                    f.create_group('branches/{}/segments/{}'.format(i,j))
+                    f.create_dataset('branches/{}/segments/{}/roi'.format(i,j),    data = s.branch)
+                    f.create_dataset('branches/{}/segments/{}/outline'.format(i,j),data = s.outline)
+                    if traces:
+                        f.create_dataset('branches/{}/segments/{}/trace'.format(i,j),  data = s.trace)
         # write stuff to disc
         f.close()
 
 
-    def load_hdf5(self,filename, data = False, mask = True, branches = True, circles = True):
+    def load_hdf5(self,filename, mask = True, pixels = True, branches = True, circles = True, freehands = True, data = True):
         """
 
         Args:
@@ -791,3 +803,51 @@ class DendriteSegmentationTool(object):
         Returns:
 
         """
+
+        with self.disable_draw():
+            import h5py
+            with h5py.File(filename,mode = 'r') as f:
+                if mask:
+                    if 'mask' not in f:
+                        raise Exception("Mask data not stored in given hd5 file.")
+                    self.threshold = f['mask'].attrs['threshold']
+                    if (self.mask != f['mask']).any():
+                        print "Warning: mask threshold does not match with stored binary mask!"
+                    self.mask = f['mask'].value
+
+                if data:
+                    if 'data' not in f:
+                        raise Exception("Data not stored in given hd5 file.")
+                    self.data = f['data'].value
+
+                if pixels:
+                    if 'pixels' not in f:
+                        raise Exception("pixels not stored in given hd5 file.")
+                    for i, p in f['pixels'].items():
+                        self.add_pixelroi(*p['roi'].value)
+
+                if freehands:
+                    if 'freehands' not in f:
+                        raise Exception("freehands not stored in given hd5 file.")
+                    for i, p in f['freehands'].items():
+                        self.add_polyroi(p['roi'].value[:,0],p['roi'].value[:,1])
+
+                if circles:
+                    if 'circles' not in f:
+                        raise Exception("circles not stored in given hd5 file.")
+                    for i, p in f['circles'].items():
+                        center = p['roi'].value[0:2]
+                        radius = p['roi'].value[2]
+                        self.add_circleroi(center=center,radius=radius)
+
+                if branches:
+                    from dumb.util.swc import Branch
+                    if 'branches' not in f:
+                        raise Exception("branches not stored in given hd5 file.")
+                    for i, p in f['branches'].items():
+                        d = p['roi'].value
+                        self.add_branchroi(Branch(0, d['x'],d['y'],d['z'],d['radius']))
+
+                # write stuff to disc
+                f.close()
+        self.fig.canvas.draw()
