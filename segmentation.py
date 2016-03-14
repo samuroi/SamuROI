@@ -42,28 +42,30 @@ class DendriteSegmentationTool(object):
     """
 
     @property
-    def threshold(self):
-        return self.__threshold
+    def mask(self):
+        if not hasattr(self,'_DendriteSegmentationTool__mask'):
+            self.__mask = numpy.ndarray(shape = self.data.shape[0:2],dtype = bool)
+        return self.__mask
 
-    @threshold.setter
-    def threshold(self,t):
+    @mask.setter
+    def mask(self, m):
+        if m.shape != self.mask.shape:
+            raise Exception("Shape needs to match image size")
+        if m.dtype != bool:
+            raise Exception("Mask dtype needs to be boolean")
+
+        self.__mask = m
+
+        # update overlay image
+        overlay = numpy.zeros(shape = self.meandata.shape + (4,),dtype = float)
+        overlay[...,3] = numpy.logical_not(self.mask)
+        if not hasattr(self,"overlayimg"):
+            self.overlayimg = self.aximage.imshow(overlay,interpolation = "nearest")
+        else:
+            self.overlayimg.set_data(overlay)
+
+        # force recalculation of traces
         with self.disable_draw():
-            self.__threshold = t
-            elevation_map = skimage.filters.sobel(self.meandata)
-
-            markers = numpy.zeros_like(self.meandata)
-            markers[self.meandata < self.threshold] = 1
-            markers[self.meandata > self.threshold*1.1] = 2
-            segmentation = skimage.morphology.watershed(elevation_map, markers)
-
-            overlay = numpy.zeros(shape = self.meandata.shape + (4,),dtype = float)
-            overlay[...,3] = segmentation == 1
-            if not hasattr(self,"overlayimg"):
-                self.overlayimg = self.aximage.imshow(overlay,interpolation = "nearest")
-            else:
-                self.overlayimg.set_data(overlay)
-            self.mask = segmentation == 2
-            # force recalculation of traces
             PolygonRoi.tracecache.clear()
             # set proper ylimit for axtraceactive and axtracehold
             for ax in [self.axtraceactive] + self.axtracehold:
@@ -77,6 +79,22 @@ class DendriteSegmentationTool(object):
                     ymax = max(numpy.max(y),ymax)
                 ax.set_ylim(ymin*0.95,ymax*1.05)
         self.fig.canvas.draw()
+
+    @property
+    def threshold(self):
+        return self.__threshold
+
+    @threshold.setter
+    def threshold(self,t):
+        self.__threshold = t
+        elevation_map = skimage.filters.sobel(self.meandata)
+
+        markers = numpy.zeros_like(self.meandata)
+        markers[self.meandata < self.threshold] = 1
+        markers[self.meandata > self.threshold*1.1] = 2
+        segmentation = skimage.morphology.watershed(elevation_map, markers)
+
+        self.mask = segmentation == 2
 
     @property
     def show_overlay(self):
