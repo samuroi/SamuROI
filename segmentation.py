@@ -439,13 +439,6 @@ class DendriteSegmentationTool(object):
         self.rois = bicyclelist()
         """ A joined set of all rois. Allows for easy cycling through all rois. use remove_**roi() and add_***roi(). To keep this set in a consistent state with the other sets."""
 
-        # get all parts from the swc file that have at least one segment
-        if swc is not None:
-            for b in swc.branches:
-                if len(b) > 1:
-                    self.add_branchroi(b)
-                else:
-                    self.add_circleroi(center=b[['x','y']][0], radius=b['radius'][0])
 
         self.fig.canvas.set_window_title('DendriteSegmentationTool')
         #self.fig.canvas.mpl_disconnect(self.fig.canvas.manager.key_press_handler_id)
@@ -480,6 +473,14 @@ class DendriteSegmentationTool(object):
         self.toolbar_postprocess = PostTraceToolbar(app = self)
         self.toolbar_postprocess.revalidate.connect(self.toggle_filter)
         self.fig.canvas.manager.window.addToolBar(self.toolbar_postprocess)
+
+        # get all parts from the swc file that have at least one segment
+        if swc is not None:
+            for b in swc.branches:
+                if len(b) > 1:
+                    self.add_branchroi(b)
+                else:
+                    self.add_circleroi(center=b[['x','y']][0], radius=b['radius'][0])
 
         # finally, select first branch
         self.next_branch()
