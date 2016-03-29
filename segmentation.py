@@ -26,7 +26,6 @@ from .rois.circleroi import CircleRoi
 #TODO give rois an id property which can be used as hashable for the set
 #TODO create treeview widget for roi list overview
 #TODO status bar which denotes the roi which is active (number and type)
-#TODO implement load hdf5 functionality
 
 
 class DendriteSegmentationTool(object):
