@@ -30,12 +30,6 @@ from .rois.circleroi import CircleRoi
 
 class DendriteSegmentationTool(object):
 
-    # class RoiSet(set):
-    #     def add(self):
-    #     def remove(self, *args, **kwargs):
-    #     def discard(self, *args, **kwargs):
-    #     def clear(self, *args, **kwargs):
-
     """
     The main class that is doing the event handling, organizes the gui and puts together the plot.
     """
@@ -520,6 +514,15 @@ class DendriteSegmentationTool(object):
         menubar = self.fig.canvas.manager.window.menuBar()
         self.file_menu = FileMenu(app = self)
         menubar.addMenu(self.file_menu)
+
+
+        from PyQt4 import QtCore, QtGui
+        from .gui.roitree import RoiTreeWidget
+
+        roitreedockwidget = QtGui.QDockWidget(parent = self.fig.canvas.manager.window)
+        roitreewidget = RoiTreeWidget(parent = roitreedockwidget,rois = self.rois)
+        roitreedockwidget.setWidget(roitreewidget)
+        self.fig.canvas.manager.window.addDockWidget(QtCore.Qt.DockWidgetArea(2), roitreedockwidget)
 
         # get all parts from the swc file that have at least one segment
         if swc is not None:
