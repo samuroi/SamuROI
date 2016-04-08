@@ -32,7 +32,7 @@ class BranchMask(Branch, Mask):
     def split(self, nsegments=2, length=None, k=1, s=0):
         branches = Branch.split(self, nsegments=nsegments, length=length, k=k, s=s)
         self.segments = [SegmentMask(data=b.data, parent=self) for b in branches]
-        self.changed()
+        self.changed(self)
 
     def linescan(self, data, mask):
         """

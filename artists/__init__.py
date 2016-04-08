@@ -14,18 +14,18 @@ from ..masks.segment import SegmentMask
 from .segment import SegmentArtist
 
 """The mapping between mask and artist"""
-artists = {
-    CircleMask: CircleArtist,
-    BranchMask: BranchArtist,
-    SegmentMask: SegmentArtist,
-    PolygonMask: PolygonArtist,
-    PixelMask: PixelArtist,
+artists = \
+    {
+        CircleMask: CircleArtist,
+        BranchMask: BranchArtist,
+        SegmentMask: SegmentArtist,
+        PolygonMask: PolygonArtist,
+        PixelMask: PixelArtist,
+    }
 
-}
 
-
-def create_artist(roi, parent):
+def create_artist(mask):
     # select type from dictionary
-    Artist = artists[type(roi)]
+    Artist = artists[type(mask)]
     # create artist with selected type
-    return Artist(roi, parent)
+    return Artist(mask)

@@ -1,6 +1,3 @@
-from dumb.util import noraise
-
-
 class MaskCreator(object):
     """Manages the interactive creation of masks. I.e. event handling, connecting and disconnecting slots."""
 
@@ -54,21 +51,19 @@ class MaskCreator(object):
         """The slot that will get called when clicked into the axes."""
         raise Exception("This function needs to be implemented in a base class.")
 
-    @noraise
     def __onclick(self, event):
         # filter out all events of other axes
         if self.axes is not event.inaxes:
             return
-        # fileter out events when zoom or pan is active
-        if self.canvas.manager.toolbar._active == 'PAN':
-            return
-        if self.canvas.manager.toolbar._active == 'ZOOM':
-            return
+        # filter out events when zoom or pan is active
+        # if self.canvas.manager.toolbar._active == 'PAN':
+        #     return
+        # if self.canvas.manager.toolbar._active == 'ZOOM':
+        #     return
 
         # forward call to baseclass event handling
         self.onclick(event)
 
-    @noraise
     def __onkey(self, event):
         # forward call to baseclass event handling
         self.onkey(event)

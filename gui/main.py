@@ -1,88 +1,13 @@
 import numpy
-# import matplotlib
-import itertools
 
 from PyQt4 import QtCore, QtGui
 
-# import matplotlib.pyplot as plt
-# import matplotlib.gridspec as gridspec
-#
 from contextlib import contextmanager
 
-from dumb.util import noraise, bicyclelist
-
-from ..segmentation import Segmentation
-
-# don't inherit from built in set, cause of some issues
-from collections import MutableSet
+from ..segmentationderived import SegmentationExtension
 
 
-class MaskSelection(MutableSet):
-    """
-    Use generic mixin functions. hence we only need to reimplement:
-        __contains__, __iter__, __len__, add(), and discard().
-    """
-
-    def __init__(self, artists):
-        """
-            artists: a dict that provides mapping from mask to artist
-        """
-        self.__masks = set()
-        self.__artists = artists
-
-    def add(self, mask):
-        artist = self.__artists[mask]
-        artist.active = True
-        return self.__masks.add(self, artist)
-
-    def discard(self, mask):
-        if mask in self.__masks:
-            artist = self.__artists[mask]
-            artist.active = False
-        return self.__masks.discard(mask)
-
-    def __contains__(self, mask):
-        return mask in self.__masks
-
-    def __iter__(self):
-        return self.__masks.__iter__()
-
-    def __len__(self):
-        return len(self.__masks)
-
-
-class SelectionBicycle(bicyclelist):
-    """
-    Calls to next, prev and cur will invalidate the selection and set the respective element as selected
-    """
-
-    def __init__(self, selection):
-        super(bicyclelist, self).__init__()
-        self.__selection = selection
-
-    def next(self):
-        item = bicyclelist.next(self)
-        self.__selection.clear()
-        self.__selection.add(item)
-        return item
-
-    def cur(self):
-        item = bicyclelist.cur(self)
-        self.__selection.clear()
-        self.__selection.add(item)
-        return item
-
-    def prev(self):
-        item = bicyclelist.prev(self)
-        self.__selection.clear()
-        self.__selection.add(item)
-        return item
-
-
-from PyQt4 import QtGui
-
-
-class DendriteSegmentationTool(QtGui.QMainWindow, Segmentation):
+class DendriteSegmentationTool(QtGui.QMainWindow):
     """
     The main class that is doing the event handling, organizes the gui and puts together the plot.
     """
@@ -130,97 +55,6 @@ class DendriteSegmentationTool(QtGui.QMainWindow, Segmentation):
                     ymin = min(numpy.min(y), ymin)
                     ymax = max(numpy.max(y), ymax)
                 ax.set_ylim(ymin * 0.95, ymax * 1.05)
-        self.fig.canvas.draw()
-
-    def on_postprocessor_changed(self):
-        self
-
-    def on_mask_added(self, mask):
-        if mask in self.mask_artists:
-            raise Exception("The given roi <{}> is already managed by this Segmentation.".format(mask))
-        # create an artist based on the type of roi
-        from ..artists import create_artist as Artist
-
-        artist = self.mask_artists[mask] = Artist(mask, self)
-
-        # add the artist to cyclic lists which will allow easy prev/next
-        self.__selection_cycles.setdefault(type(mask), SelectionBicycle(selection=self.mask_selection)).append(mask)
-        self.__selection_cycles["all"].append(mask)
-
-    def on_mask_removed(self, mask):
-        if mask not in self.mask_artists:
-            raise Exception("The given roi <{}> is not managed by this Segmentation.".format(mask))
-        artist = self.mask_artists[mask]
-        del self.mask_artists[mask]
-        artist.remove()
-
-        # remove the artist from the cyclic lists
-        self.__selection_cycles[type(mask)].remove(mask)
-        self.__selection_cycles["all"].remove(mask)
-
-    def on_roi_changed(self, roi):
-        pass
-
-    @property
-    def branch_cycle(self):
-        from ..masks.branch import BranchMask
-        return self.__selection_cycles[BranchMask]
-
-    @property
-    def polygon_cycle(self):
-        from ..masks.polygon import PolygonMask
-        return self.__selection_cycles[PolygonMask]
-
-    @property
-    def pixel_cycle(self):
-        from ..masks.pixel import PixelMask
-        return self.__selection_cycles[PixelMask]
-
-    @property
-    def circle_cycle(self):
-        from ..masks.circle import CircleMask
-        return self.__selection_cycles[CircleMask]
-
-    @property
-    def artist_cycle(self):
-        return self.__selection_cycles["all"]
-
-    # def next_segment(self):
-    #     if self.active_branch is not None:
-    #         self.active_segment = self.active_branch.next_segment()
-    #
-    # def previous_segment(self):
-    #     if self.active_branch is not None:
-    #         self.active_segment = self.active_branch.previous_segment()
-
-    @property
-    def active_frame(self):
-        return self.__active_frame
-
-    @active_frame.setter
-    def active_frame(self, f):
-        with self.disable_draw():
-            if not 0 <= f < self.data.shape[2]:
-                raise Exception("Frame needs to be in range [0,{}]".format(self.data.shape[2]))
-
-            self.__active_frame = f
-
-            # remove the markers
-            if hasattr(self, "_DendriteSegmentationTool__active_frame_lines"):
-                for l in self.__active_frame_lines:
-                    l.remove()
-
-            # redraw the markers
-            self.__active_frame_lines = []
-            for ax in self.timeaxes:
-                l = ax.axvline(x=f, color='black', lw=1.)
-                self.__active_frame_lines.append(l)
-
-        self.fig.canvas.draw()
-
-    def split_branches(self, length):
-        with self.disable_draw():
-            Segmentation.split_branches(self, length=length)
         self.fig.canvas.draw()
 
     def split_segment(self, segment, parts=2):
@@ -284,8 +118,10 @@ class DendriteSegmentationTool(QtGui.QMainWindow, Segmentation):
             pmin,pmax: Percentiles for color range. I.e. the color range for mean and data will start at pmin %
                            and reach up to pmax %. Defaults to (10,99)
         """
-        Segmentation.__init__(self, data=data, mean=mean)
         QtGui.QMainWindow.__init__(self)
+
+        self.segmentation = SegmentationExtension(data, mean)
+
         # set window title
         self.setWindowTitle("DendriteSegmentationTool")
         # instantiate a widget, it will be the main one
@@ -297,7 +133,7 @@ class DendriteSegmentationTool(QtGui.QMainWindow, Segmentation):
 
         # create widget for frame
         from .widgets.frame import FrameCanvas
-        self.frame_canvas = FrameCanvas(segmentation=self)
+        self.frame_canvas = FrameCanvas(segmentation=self.segmentation)
         self.vbl.addWidget(self.frame_canvas)
 
         # self.tracecache = DendriteSegmentationTool.TraceCache()
@@ -309,9 +145,7 @@ class DendriteSegmentationTool(QtGui.QMainWindow, Segmentation):
         # self.mask_selection = MaskSelection(artists=self.mask_artists)
         # """A set of all selected masks. To change selection state, just add/remove masks to/from the set."""
         #
-        # self.__selection_cycles = dict()
-        # """For each type of mask, hold a bicycle list of masks to cycle through the respective group. Also hold a cycle containing all masks."""
-        # self.__selection_cycles["all"] = SelectionBicycle(selection=self.mask_selection)
+
         #
         # self._setup_figure()
         self._setup_toolbars()
@@ -329,7 +163,6 @@ class DendriteSegmentationTool(QtGui.QMainWindow, Segmentation):
         # self.postprocessor_changed.append(self.on_postprocessor_changed)
 
         # self.fig.canvas.mpl_disconnect(self.fig.canvas.manager.key_press_handler_id)
-        # self.fig.canvas.mpl_connect('pick_event', noraise(self.onpick))
         # self.fig.canvas.mpl_connect('key_press_event', noraise(self.onkey))
 
         from .filemenu import FileMenu
@@ -339,7 +172,7 @@ class DendriteSegmentationTool(QtGui.QMainWindow, Segmentation):
 
         from .widgets.linescan import LineScanCanvas
         linescandockwidget = QtGui.QDockWidget("Linescan", parent=self)
-        linescanwidget = LineScanCanvas(parent=self)
+        linescanwidget = LineScanCanvas(segmentation=self.segmentation)
         linescandockwidget.setWidget(linescanwidget)
         self.addDockWidget(QtCore.Qt.TopDockWidgetArea, linescandockwidget)
 
@@ -352,51 +185,24 @@ class DendriteSegmentationTool(QtGui.QMainWindow, Segmentation):
         # finally, select first branch
         # self.next_branch()
 
-    def _setup_figure(self):
-        self.fig = plt.figure()
-
-        self.gs = gridspec.GridSpec(2, 1, height_ratios=[.3, .7])
-        self.axraster = plt.subplot(self.gs[0])
-        self.gsl = gridspec.GridSpecFromSubplotSpec(4, 2, subplot_spec=self.gs[1], height_ratios=[.6, 1, 1, 1],
-                                                    hspace=0.075)
-        self.aximage = plt.subplot(self.gsl[:, 1])
-        self.axtraceactive = plt.subplot(self.gsl[0, 0], sharex=self.axraster)
-        self.axhold1 = plt.subplot(self.gsl[1, 0], sharex=self.axraster)
-        self.axhold2 = plt.subplot(self.gsl[2, 0], sharex=self.axraster)
-        self.axhold3 = plt.subplot(self.gsl[3, 0], sharex=self.axraster)
-
-        self.axtracehold = [self.axhold1, self.axhold2, self.axhold3]
-        """ a list with the axes where traces can put on hold"""
-        self.timeaxes = [self.axtraceactive] + self.axtracehold + [self.axraster]
-        """ a list with all axes that have time as x axis"""
-
-        # disable labels in the hold axes two timeaxes and label the active axes
-        self.axtraceactive.tick_params(axis='x', labelbottom=False, labeltop=True)
-
-        for ax in self.axtracehold:
-            ax.tick_params(axis='x', labelbottom=False)
-
-        for ax in self.timeaxes:
-            ax.set_xlim(0, self.data.shape[-1])
-
     def _setup_toolbars(self):
         # self.toolbar_navigation = self.fig.canvas.manager.toolbar
 
         from .toolbars import NavigationToolbar
-        self.toolbar_branch = NavigationToolbar(app=self)
+        self.toolbar_branch = NavigationToolbar(parent=self)
         self.addToolBar(self.toolbar_branch)
 
         from .toolbars import MaskToolbar
-        self.toolbar_mask = MaskToolbar(frame_canvas=self.frame_canvas)
+        self.toolbar_mask = MaskToolbar(parent=self)
         self.addToolBar(self.toolbar_mask)
 
-        # from .toolbars import SplitJoinToolbar
-        # self.toolbar_splitjoin = SplitJoinToolbar(app=self)
-        # self.addToolBar(self.toolbar_splitjoin)
-        #
-        # from .toolbars import ManageRoiToolbar
-        # self.toolbar_createroi = ManageRoiToolbar(app=self)
-        # self.addToolBar(self.toolbar_createroi)
+        from .toolbars import SplitJoinToolbar
+        self.toolbar_splitjoin = SplitJoinToolbar(parent=self)
+        self.addToolBar(self.toolbar_splitjoin)
+
+        from .toolbars import ManageRoiToolbar
+        self.toolbar_createroi = ManageRoiToolbar(parent=self)
+        self.addToolBar(self.toolbar_createroi)
         #
         # from .toolbars import TraceHoldToolbar
         # self.toolbar_tracehold = TraceHoldToolbar(app=self)
@@ -452,18 +258,3 @@ class DendriteSegmentationTool(QtGui.QMainWindow, Segmentation):
             self.threshold = self.threshold / 1.05
         if event.key == 'm':
             self.toggle_overlay()
-
-    def onpick(self, event):
-        if event.mouseevent.inaxes is self.aximage:
-            roi = event.artist.roi
-        elif event.mouseevent.inaxes in [self.axtraceactive] + self.axtracehold and hasattr(event.artist, "roi"):
-            roi = event.artist.roi
-        else:
-            roi = None
-
-        if roi in self.rois:
-            self.active_roi = roi
-        else:
-            for b in self.branchrois:
-                if roi in b.children:
-                    self.active_segment = roi

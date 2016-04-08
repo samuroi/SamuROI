@@ -1,44 +1,64 @@
 from PyQt4 import QtGui, QtCore
 
-class MaskToolbar(QtGui.QToolBar):
-    def threshold_changed(self, value):
-        self.frame_canvas.segmentation.threshold = value
 
-    def __init__(self, frame_canvas, *args, **kwargs):
-        super(MaskToolbar, self).__init__(*args, **kwargs)
-        self.frame_canvas = frame_canvas
+class ToolBar(QtGui.QToolBar):
+    """
+    Common base class for all Toolbars, which provides properties for
+    the active frame canvas and the active segmentation
+    """
+
+    def __init__(self, parent, *args, **kwargs):
+        super(ToolBar, self).__init__(parent=parent, *args, **kwargs)
+
+    @property
+    def active_frame_canvas(self):
+        return self.parent().frame_canvas
+
+    @property
+    def active_segmentation(self):
+        return self.parent().segmentation
+
+
+class MaskToolbar(ToolBar):
+    def threshold_changed(self, value):
+        self.active_segmentation.threshold = value
+
+    def __init__(self, parent, *args, **kwargs):
+        super(MaskToolbar, self).__init__(parent=parent, *args, **kwargs)
 
         self.btn_toggle = self.addAction("Mask")
         self.btn_toggle.setToolTip("Toggle the mask overlay.")
         self.btn_toggle.setCheckable(True)
-        self.btn_toggle.setChecked(self.frame_canvas.show_overlay)
-        self.btn_toggle.triggered.connect(lambda on: setattr(self.frame_canvas, "show_overlay", on))
+        self.btn_toggle.setChecked(self.active_frame_canvas.show_overlay)
+        self.btn_toggle.triggered.connect(lambda on: setattr(self.active_frame_canvas, "show_overlay", on))
 
         self.threshold_spin_box = QtGui.QDoubleSpinBox(value=0)
-        self.threshold_spin_box.setRange(0, self.frame_canvas.segmentation.threshold * 99)
-        self.threshold_spin_box.setValue(self.frame_canvas.segmentation.threshold)
+        self.threshold_spin_box.setRange(0, self.active_segmentation.threshold * 99)
+        self.threshold_spin_box.setValue(self.active_segmentation.threshold)
         self.threshold_spin_box.setAlignment(QtCore.Qt.Alignment(QtCore.Qt.AlignRight))
-        self.threshold_spin_box.setSingleStep(self.frame_canvas.segmentation.threshold * .05)
+        self.threshold_spin_box.setSingleStep(self.active_segmentation.threshold * .05)
         self.threshold_spin_box.valueChanged.connect(self.threshold_changed)
 
         self.addWidget(self.threshold_spin_box)
 
 
-class SplitJoinToolbar(QtGui.QToolBar):
+class SplitJoinToolbar(ToolBar):
     def split_single(self):
-        if self.app.active_branch is not None:
-            self.app.split_branch(length=self.split_length_widget.value(), branch=self.app.active_branch)
+        raise NotImplementedError()
+        # if self.app.active_branch is not None:
+        #     self.app.split_branch(length=self.split_length_widget.value(), branch=self.app.active_branch)
 
     def split_all(self):
-        self.app.split_branches(length=self.split_length_widget.value())
+        for mask in self.active_segmentation.branchmasks:
+            mask.split(length=self.split_length_widget.value())
 
-    def __init__(self, app, *args, **kwargs):
-        super(SplitJoinToolbar, self).__init__(*args, **kwargs)
-        self.app = app
+    def __init__(self, parent, *args, **kwargs):
+        super(SplitJoinToolbar, self).__init__(parent=parent, *args, **kwargs)
 
         self.btn_split_single = self.addAction("split\nbranch")
         self.btn_split_single.setToolTip("Split selected branch.")
-        self.btn_split_single.triggered.connect(self.split_single)
+        self.btn_split_single.setEnabled(False)
+        # self.btn_split_single.triggered.connect(self.split_single)
 
         self.btn_split_single = self.addAction("split\nall")
         self.btn_split_single.setToolTip("Split all branches.")
@@ -52,71 +72,83 @@ class SplitJoinToolbar(QtGui.QToolBar):
 
         self.btn_split_segment = self.addAction("1/2")
         self.btn_split_segment.setToolTip("Split selected segment in two equal parts.")
-        self.btn_split_segment.triggered.connect(lambda: self.app.split_segment())
+        self.btn_split_segment.setEnabled(False)
+        # self.btn_split_segment.triggered.connect(lambda: self.app.split_segment())
 
         self.btn_merge_segment_left = self.addAction("<+")
         self.btn_merge_segment_left.setToolTip("Merge selected segment with preceeding segment.")
-        self.btn_merge_segment_left.triggered.connect(lambda: self.app.join_segments(next=False))
+        self.btn_merge_segment_left.setEnabled(False)
+        # self.btn_merge_segment_left.triggered.connect(lambda: self.app.join_segments(next=False))
 
         self.btn_merge_segment_right = self.addAction("+>")
         self.btn_merge_segment_right.setToolTip("Merge selected segment with next segment.")
-        self.btn_merge_segment_right.triggered.connect(lambda: self.app.join_segments(next=True))
+        self.btn_merge_segment_right.setEnabled(False)
+        # self.btn_merge_segment_right.triggered.connect(lambda: self.app.join_segments(next=True))
 
 
-class NavigationToolbar(QtGui.QToolBar):
-    def __init__(self, app, *args, **kwargs):
-        super(NavigationToolbar, self).__init__(*args, **kwargs)
+class NavigationToolbar(ToolBar):
+    def __init__(self, parent, *args, **kwargs):
+        super(NavigationToolbar, self).__init__(parent=parent, *args, **kwargs)
 
-        self.app = app
         self.index = 0
         """The index of the rois that is currently selected"""
 
         self.btn_prev_roi = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSkipBackward), "<<")
-        # self.btn_prev_roi.triggered.connect(self.app.previous_roi)
+        self.btn_prev_roi.triggered.connect(self.active_segmentation.mask_cycle.prev)
         self.btn_prev_roi.setToolTip("Select next roi.")
 
         self.btn_prev_seg = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSeekBackward), "<")
         # self.btn_prev_seg.triggered.connect(self.app.previous_segment)
+        self.btn_prev_seg.setEnabled(False)
         self.btn_prev_seg.setToolTip("Select next segment.")
 
         self.btn_next_seg = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSeekForward), ">")
+        self.btn_next_seg.setEnabled(False)
         # self.btn_next_seg.triggered.connect(self.app.next_segment)
         self.btn_next_seg.setToolTip("Select previous segment.")
 
         self.btn_next_roi = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSkipForward), ">>")
-        # self.btn_next_roi.triggered.connect(self.app.next_roi)
+        self.btn_next_roi.triggered.connect(self.active_segmentation.mask_cycle.next)
         self.btn_next_roi.setToolTip("Select previous roi.")
 
 
-class ManageRoiToolbar(QtGui.QToolBar):
+class ManageRoiToolbar(ToolBar):
+    def add_mask(self,mask):
+        self.active_segmentation.masks.add(mask)
+        self.active_segmentation.selection.clear()
+        self.active_frame_canvas.selection.add(mask)
+
     def add_branch(self, mask):
         self.branchmask_creator.enabled = False
         self.add_branchmask.setChecked(False)
-        self.app.rois.add(mask)
+        self.add_mask(mask)
 
     def add_polyroi(self, mask):
         self.polymask_creator.enabled = False
         self.add_polymask.setChecked(False)
-        self.app.polyrois.add(mask)
+        self.add_mask(mask)
 
     def add_pixelroi(self, mask):
         self.pixelmask_creator.enabled = False
         self.add_pixelmask.setChecked(False)
-        self.app.pixelrois.add(mask)
+        self.add_mask(mask)
 
     def remove_roi(self):
-        if self.app.active_roi is not None:
-            self.app.remove_roi(self.app.active_roi)
+        # careful here: if we remove masks from the segmentation, this will notify the frame_canvas
+        # and the frame_canvas might update its selection, i.e. we might modify the list we loop upon
+        # hence: create a copy of the selection
+        masks = [mask for mask in self.active_segmentation.selection]
+        assert (self.active_segmentation is self.active_frame_canvas.segmentation)
+        for mask in masks:
+            self.active_segmentation.masks.remove(mask)
 
-    def __init__(self, app, *args, **kwargs):
-        super(ManageRoiToolbar, self).__init__(*args, **kwargs)
-
-        self.app = app
+    def __init__(self, parent, *args, **kwargs):
+        super(ManageRoiToolbar, self).__init__(parent=parent, *args, **kwargs)
 
         from ..util.pixelmaskcreator import PixelMaskCreator
-        self.pixelmask_creator = PixelMaskCreator(axes=app.aximage,
-                                                  canvas=app.fig.canvas,
-                                                  update=app.fig.canvas.draw,
+        self.pixelmask_creator = PixelMaskCreator(axes=self.active_frame_canvas.axes,
+                                                  canvas=self.active_frame_canvas,
+                                                  update=self.active_frame_canvas.draw,
                                                   notify=self.add_pixelroi)
         tooltip = "Create freehand pixel masks. \n" + \
                   "If the freehand mode is active each click into the 2D image\n" + \
@@ -128,8 +160,9 @@ class ManageRoiToolbar(QtGui.QToolBar):
         self.add_pixelmask.triggered.connect(lambda: setattr(self.pixelmask_creator, 'enabled', True))
 
         from ..util.branchmaskcreator import BranchMaskCreator
-        self.branchmask_creator = BranchMaskCreator(axes=app.aximage, canvas=app.fig.canvas,
-                                                    update=app.fig.canvas.draw,
+        self.branchmask_creator = BranchMaskCreator(axes=self.active_frame_canvas.axes,
+                                                    canvas=self.active_frame_canvas,
+                                                    update=self.active_frame_canvas.draw,
                                                     notify=self.add_branch)
         tooltip = "Create a new branch. \n" + \
                   "Click for adding new segments, use '+'/'-' keys to adjust segment thicknes. \n" + \
@@ -140,9 +173,9 @@ class ManageRoiToolbar(QtGui.QToolBar):
         self.add_branchmask.triggered.connect(lambda: setattr(self.branchmask_creator, 'enabled', True))
 
         from ..util.polymaskcreator import PolyMaskCreator
-        self.polymask_creator = PolyMaskCreator(axes=app.aximage,
-                                                canvas=app.fig.canvas,
-                                                update=app.fig.canvas.draw,
+        self.polymask_creator = PolyMaskCreator(axes=self.active_frame_canvas.axes,
+                                                canvas=self.active_frame_canvas,
+                                                update=self.active_frame_canvas.draw,
                                                 notify=self.add_polyroi)
 
         tooltip = "Create a freehand polygon mask. \n" + \

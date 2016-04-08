@@ -1,16 +1,12 @@
-from ordered_set import OrderedSet
-
 from .util.event import Event
 
-from collections import Sized, Iterable, Container
+from collections import MutableSet
 
 
-class MaskSet(Sized, Iterable, Container):
+class MaskSet(MutableSet):
     """
-    A set of rois. Provide following additional functionality:
-        - hold active item.
-        - select next or previous active item
-        - hold elements of only one specific type??  (TODO: think about that, is this a clever constraint?)
+    Use generic mixin functions. hence we only need to reimplement:
+        __contains__, __iter__, __len__, add(), and discard().
     """
 
     def __init__(self, iterable=[]):
@@ -41,14 +37,14 @@ class MaskSet(Sized, Iterable, Container):
         return self.__items[type]
 
     def add(self, elem):
-        set = self.__items.setdefault(type(elem), OrderedSet())
-        emit = elem not in set
-        set.add(elem)
+        _set = self.__items.setdefault(type(elem), set())
+        emit = elem not in _set
+        _set.add(elem)
         if emit:
             self.added(elem)
 
-    def remove(self, elem):
-        if type(elem) not in self.__items:
-            raise KeyError("no elemts of given type in roiset")
-        self.__items[type(elem)].remove(elem)
-        self.removed(elem)
+    def discard(self, elem):
+        emit = elem in self.__items[type(elem)]
+        self.__items[type(elem)].discard(elem)
+        if emit:
+            self.removed(elem)

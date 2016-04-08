@@ -1,18 +1,20 @@
 import numpy
 
 import matplotlib
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+
+from PyQt4 import QtCore
+
+from .canvasbase import CanvasBase
 
 
-class FrameCanvas(FigureCanvas):
+class FrameCanvas(CanvasBase):
     """Plot the actual 2D frame of data with all mask artists and the overlay"""
 
     def __init__(self, segmentation):
         # initialize the canvas where the Figure renders into
-        FigureCanvas.__init__(self, Figure())
+        CanvasBase.__init__(self)
+
         self.segmentation = segmentation
-        self.axes = self.figure.add_subplot(111)
         self.__active_frame = None
 
         pmin, pmax = 10, 99
@@ -37,6 +39,22 @@ class FrameCanvas(FigureCanvas):
 
         self.figure.colorbar(self.frameimg, ax=self.axes)
 
+        self.segmentation.masks.added.append(self.on_mask_added)
+        self.segmentation.masks.removed.append(self.on_mask_removed)
+        self.segmentation.overlay_changed.append(self.on_overlay_changed)
+        self.segmentation.data_changed.append(self.on_data_changed)
+        self.segmentation.selection.added.append(self.on_selection_added)
+        self.segmentation.selection.removed.append(self.on_selection_removed)
+
+        self.mpl_connect('pick_event', self.onpick)
+
+    def get_artist(self, mask):
+        count = sum(1 for artist in self.axes.artists if artist.mask is mask)
+        if count != 1:
+            raise Exception("Count = " + str(count))
+        # find the artist associated with the mask
+        return next(artist for artist in self.axes.artists if artist.mask is mask)
+
     @property
     def rgba_overlay(self):
         # update overlay image
@@ -44,21 +62,40 @@ class FrameCanvas(FigureCanvas):
         overlay[..., 3] = numpy.logical_not(self.segmentation.overlay)
         return overlay
 
-    def on_data_changed(self, d):
+    def on_selection_added(self, mask):
+        artist = self.get_artist(mask)
+        artist.selected = True
+        self.draw()
+
+    def on_selection_removed(self, mask):
+        artist = self.get_artist(mask)
+        artist.selected = False
+        self.draw()
+
+    def on_data_changed(self):
         raise NotImplementedError()
 
-    def on_overlay_changed(self, m):
+    def on_overlay_changed(self):
         self.overlayimg.set_data(self.rgba_overlay)
         self.draw()
 
     def on_mask_added(self, mask):
-        raise NotImplementedError()
+        # create an artist based on the type of roi
+        from ...artists import create_artist
+        artist = create_artist(mask)
+        self.axes.add_artist(artist)
+        if hasattr(mask, "changed"):
+            mask.changed.append(self.on_mask_changed)
+        self.draw()
 
     def on_mask_removed(self, mask):
-        raise NotImplementedError()
+        for artist in self.axes.artists:
+            if artist.mask is mask:
+                artist.remove()
+                self.draw()
 
-    def on_roi_changed(self, roi):
-        raise NotImplementedError()
+    def on_mask_changed(self, mask):
+        self.draw()
 
     @property
     def show_overlay(self):
@@ -88,3 +125,11 @@ class FrameCanvas(FigureCanvas):
         self.frameimg.set_data(self.segmentation.data[..., f])
 
         self.draw()
+
+    def onpick(self, event):
+        with self.draw_on_exit():
+            # TODO add logic for selecting segments
+            # if shift key is not pressed clear selection
+            if not (event.guiEvent.modifiers() and QtCore.Qt.ShiftModifier):
+                self.segmentation.selection.clear()
+            self.segmentation.selection.add(event.artist.mask)
