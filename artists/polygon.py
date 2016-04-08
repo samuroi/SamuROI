@@ -1,80 +1,59 @@
 import itertools
 
-from dumb.util import PolyMask
-
 from matplotlib.patches import Polygon
 
-from .roi import Roi
+from .artist import Artist
 
-class PolygonRoi(Roi):
+
+class PolygonArtist(Artist):
     """
     Common base class for polygon rois.
     """
 
     # use thin lines for inactive artists, and thick lines for active ones.
-    thin  = 1
+    thin = 1
     thick = 5
 
     colors = {'red', 'green', 'blue', 'cyan', 'purple'}
     colorcycle = itertools.cycle(colors)
 
-    @Roi.active.setter
-    def active(self,a):
+    @Artist.active.setter
+    def active(self, a):
         """ Extend the roi setter to also change linewidth of active artist."""
         if a is True:
-            self.artist.set_linewidth(self.thick)
-            self.artist.set_edgecolor(self.active_color)
+            self.polygon.set_linewidth(self.thick)
+            self.polygon.set_edgecolor(self.color)
         else:
-            self.artist.set_linewidth(self.thin)
-            self.artist.set_edgecolor('gray')
-        Roi.active.fset(self,a)
+            self.polygon.set_linewidth(self.thin)
+            self.polygon.set_edgecolor('gray')
+        Artist.active.fset(self, a)
 
     @property
     def color(self):
-        return self.artist.get_edgecolor()
+        return self.__color
 
-    def __init__(self, outline, datasource, axes, **kwargs):
-        """
-        The datasource needs to provide attributes:
-            data and mask
-            data needs to be WxHxT array
-            and mask may be a WxH array or None
-            by providint the datasource as proxy object to the PolygonRoi,
-            we can easyly exchange the data in other parts of the application.
-        """
-        self.datasource = datasource
-        self.outline = outline
-        copy = outline.copy()
-        copy = copy + 0.5
-        self.polymask = copy.view(PolyMask)
-        artist   = Polygon(outline, fill = False,
-                                picker = True,
-                                lw  = self.thin,
-                                color = 'gray',# PolygonRoi.colorcycle.next(),
-                                **kwargs)
-        artist.roi = self
-        self.active_color = PolygonRoi.colorcycle.next()
-        super(PolygonRoi,self).__init__(axes = axes, artist = artist)
+    def __init__(self, mask, parent):
+        super(PolygonArtist, self).__init__(mask, parent)
 
-        if axes is not None:
-            axes.aximage.add_artist(self.artist)
+        self.polygon = Polygon(mask.outline + 0.5, fill=False,
+                               picker=True,
+                               lw=self.thin,
+                               color='gray')
+        self.polygon.roi = self
 
-    def applymask(self):
-        data = self.datasource.data
-        mask = self.datasource.mask
-        return self.polymask(data = data, mask = mask)
+        self.__color = PolygonArtist.colorcycle.next()
 
+        parent.aximage.add_artist(self.polygon)
 
-    def toggle_hold(self,ax):
+    def toggle_hold(self, ax):
         """
             Plot the trace on axes even if the roi is not active.
         """
         # call baseclass toggle_hold for trace handling
-        Roi.toggle_hold(self, ax)
+        Artist.toggle_hold(self, ax)
 
         # now handle the own mask artist
         if len(self.holdaxes) > 0:
-            self.artist.set_linestyle('dashed')
+            self.polygon.set_linestyle('dashed')
         else:
-            self.artist.set_linestyle('solid')
-
+            self.polygon.set_linestyle('solid')

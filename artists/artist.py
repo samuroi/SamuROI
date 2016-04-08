@@ -4,90 +4,77 @@ from dumb.util import PolyMask
 
 from matplotlib.patches import Polygon
 
-class Roi(object):
+from abc import abstractmethod, abstractproperty
+
+
+class Artist(object):
     """
     Base class for rois that allow calculating traces and have an attached matplotlib artists.
     This class handles trace updates, trace plot states, trace holding and the roi artist managment.
     """
 
-    class TraceCache(dict):
-        """
-        notify all rois with cached traces to update their plots on cach clearing.
-        """
-        def clear(self):
-            rois = self.keys()
-            dict.clear(self)
-            for roi in rois:
-                roi.notify()
-
-    tracecache = TraceCache()
-
-    def __init__(self, axes, artist):
+    def __init__(self, mask, parent):
         self.__active = False
 
-        self.artist = artist
-        """The artist representing the mask."""
+        self.mask = mask
+        """The underlying mask object."""
 
-        self.axes = axes
+        self.parent = parent
         """an object that has a axtraceactive attribute defininf the axes where to plot the active traces"""
-        self.holdaxes  = []
+        self.holdaxes = []
         """the list of axes where this roi actually holds a trace"""
         self.holdlines = {}
         """a mapping from the axes where the roi holds a trace, to the line artist"""
 
-    def applymask(self):
-        raise NotImplementedError("applymask needs to be implemented in a derived class.")
+    @abstractproperty
+    def color(self):
+        raise NotImplementedError("")
 
-#def postapply(self,trace):
-#"""
-#Do some postprocessing on the trace. This function will be called
-#after the mask has been applied and the data is extracted from the video.
-#This function can be overridden, or monkeypatched. It is supposed to return a numpy array
-#of the same shape as the input trace. The default behaviour is doin nothing."""
-#return trace
+    def applymask(self):
+        data = self.parent.data
+        mask = self.parent.mask
+        return self.mask(data=data, mask=mask)
 
     @property
     def trace(self):
-        if self not in Roi.tracecache:
+        if self not in self.parent.tracecache:
             t = self.applymask()
-            Roi.tracecache[self] = self.axes.post_apply(t)
-        return Roi.tracecache[self]
+            self.parent.tracecache[self] = self.parent.post_apply(t)
+        return self.parent.tracecache[self]
 
-    def relim(self,axes):
+    def relim(self, axes):
         """recalculate and update the axes limit after adding/removing a line or updating via notify."""
         axes.relim()
-        axes.autoscale(axis = 'y',tight = True)
-        mi,ma = axes.get_ylim()
-        axes.set_ylim(mi-(ma-mi)*0.1, ma+(ma-mi)*0.1)
+        axes.autoscale(axis='y', tight=True)
+        mi, ma = axes.get_ylim()
+        axes.set_ylim(mi - (ma - mi) * 0.1, ma + (ma - mi) * 0.1)
 
     def remove(self):
         """remove all artists and traces"""
-        self.artist.remove()
-        if hasattr(self,"traceline"):
+        if hasattr(self, "traceline"):
             self.traceline.remove()
-        for axes,line in self.holdlines.iteritems():
+        for axes, line in self.holdlines.iteritems():
             line.remove()
             # recalculate the ylim for the remaining lines
             self.relim(axes)
-        if self in Roi.tracecache:
-            del Roi.tracecache[self]
-
+        if self in self.parent.tracecache:
+            del self.parent.tracecache[self]
 
     def notify(self):
         """ this method is supposed to be called when the trace data has changed."""
         # update the trace of active line
-        if hasattr(self,"traceline"):
+        if hasattr(self, "traceline"):
             trace = self.trace
-            x,_ = self.traceline.get_data()
-            self.traceline.set_data(x,trace)
+            x, _ = self.traceline.get_data()
+            self.traceline.set_data(x, trace)
 
         # update the holded traces
-        for axes,line in self.holdlines.iteritems():
-            x,_ = line.get_data()
-            line.set_data(x,self.trace)
+        for axes, line in self.holdlines.iteritems():
+            x, _ = line.get_data()
+            line.set_data(x, self.trace)
             self.relim(axes)
 
-    def toggle_hold(self,ax):
+    def toggle_hold(self, ax):
         """
             Plot the trace on axes even if the roi is not active.
         """
@@ -97,7 +84,7 @@ class Roi(object):
             self.holdaxes.remove(ax)
         else:
             self.holdaxes.append(ax)
-            line, = ax.plot(self.trace, color = self.color, picker = 5)
+            line, = ax.plot(self.trace, color=self.color, picker=5)
             line.roi = self
             self.holdlines[ax] = line
         # because we have added/removed a line from the holdaxes, we need to relimit the axes
@@ -105,8 +92,8 @@ class Roi(object):
 
     @trace.deleter
     def trace(self):
-        if self in Roi.tracecache:
-            del Roi.tracecache[self]
+        if self in self.parent.tracecache:
+            del self.parent.tracecache[self]
 
     @property
     def active(self):
@@ -117,10 +104,10 @@ class Roi(object):
         if self.active == active:
             return
         if active:
-            self.traceline, = self.axes.axtraceactive.plot(self.trace, color = self.color)
+            self.traceline, = self.parent.axtraceactive.plot(self.trace, color=self.color)
         else:
-            if hasattr(self,"traceline") and self.traceline in self.axes.axtraceactive.lines:
+            if hasattr(self, "traceline") and self.traceline in self.parent.axtraceactive.lines:
                 self.traceline.remove()
                 del self.traceline
-        self.relim(self.axes.axtraceactive)
+        self.relim(self.parent.axtraceactive)
         self.__active = active

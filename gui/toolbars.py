@@ -1,25 +1,24 @@
 from PyQt4 import QtGui, QtCore
 
-
 class MaskToolbar(QtGui.QToolBar):
     def threshold_changed(self, value):
-        self.app.threshold = value
+        self.frame_canvas.segmentation.threshold = value
 
-    def __init__(self, app, *args, **kwargs):
+    def __init__(self, frame_canvas, *args, **kwargs):
         super(MaskToolbar, self).__init__(*args, **kwargs)
-        self.app = app
+        self.frame_canvas = frame_canvas
 
         self.btn_toggle = self.addAction("Mask")
         self.btn_toggle.setToolTip("Toggle the mask overlay.")
         self.btn_toggle.setCheckable(True)
-        self.btn_toggle.setChecked(self.app.show_overlay)
-        self.btn_toggle.triggered.connect(lambda on: setattr(self.app, "show_overlay", on))
+        self.btn_toggle.setChecked(self.frame_canvas.show_overlay)
+        self.btn_toggle.triggered.connect(lambda on: setattr(self.frame_canvas, "show_overlay", on))
 
         self.threshold_spin_box = QtGui.QDoubleSpinBox(value=0)
-        self.threshold_spin_box.setRange(0, self.app.threshold * 99)
-        self.threshold_spin_box.setValue(self.app.threshold)
+        self.threshold_spin_box.setRange(0, self.frame_canvas.segmentation.threshold * 99)
+        self.threshold_spin_box.setValue(self.frame_canvas.segmentation.threshold)
         self.threshold_spin_box.setAlignment(QtCore.Qt.Alignment(QtCore.Qt.AlignRight))
-        self.threshold_spin_box.setSingleStep(self.app.threshold * .05)
+        self.threshold_spin_box.setSingleStep(self.frame_canvas.segmentation.threshold * .05)
         self.threshold_spin_box.valueChanged.connect(self.threshold_changed)
 
         self.addWidget(self.threshold_spin_box)
@@ -28,7 +27,7 @@ class MaskToolbar(QtGui.QToolBar):
 class SplitJoinToolbar(QtGui.QToolBar):
     def split_single(self):
         if self.app.active_branch is not None:
-            self.app.split_branch(length=self.split_length_widget.value(), branch = self.app.active_branch)
+            self.app.split_branch(length=self.split_length_widget.value(), branch=self.app.active_branch)
 
     def split_all(self):
         self.app.split_branches(length=self.split_length_widget.value())
@@ -73,40 +72,37 @@ class NavigationToolbar(QtGui.QToolBar):
         """The index of the rois that is currently selected"""
 
         self.btn_prev_roi = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSkipBackward), "<<")
-        self.btn_prev_roi.triggered.connect(self.app.previous_roi)
+        # self.btn_prev_roi.triggered.connect(self.app.previous_roi)
         self.btn_prev_roi.setToolTip("Select next roi.")
 
         self.btn_prev_seg = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSeekBackward), "<")
-        self.btn_prev_seg.triggered.connect(self.app.previous_segment)
+        # self.btn_prev_seg.triggered.connect(self.app.previous_segment)
         self.btn_prev_seg.setToolTip("Select next segment.")
 
         self.btn_next_seg = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSeekForward), ">")
-        self.btn_next_seg.triggered.connect(self.app.next_segment)
+        # self.btn_next_seg.triggered.connect(self.app.next_segment)
         self.btn_next_seg.setToolTip("Select previous segment.")
 
         self.btn_next_roi = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSkipForward), ">>")
-        self.btn_next_roi.triggered.connect(self.app.next_roi)
+        # self.btn_next_roi.triggered.connect(self.app.next_roi)
         self.btn_next_roi.setToolTip("Select previous roi.")
 
 
 class ManageRoiToolbar(QtGui.QToolBar):
-    def add_branch(self, branch):
+    def add_branch(self, mask):
         self.branchmask_creator.enabled = False
         self.add_branchmask.setChecked(False)
-        if len(branch) == 1:
-            self.app.add_circleroi(center=branch[['x','y']][0], radius=branch['radius'][0])
-        else:
-            self.app.add_branchroi(branch)
+        self.app.rois.add(mask)
 
-    def add_polyroi(self, *args):
+    def add_polyroi(self, mask):
         self.polymask_creator.enabled = False
         self.add_polymask.setChecked(False)
-        self.app.add_polyroi(*args)
+        self.app.polyrois.add(mask)
 
-    def add_pixelroi(self, *args):
+    def add_pixelroi(self, mask):
         self.pixelmask_creator.enabled = False
         self.add_pixelmask.setChecked(False)
-        self.app.add_pixelroi(*args)
+        self.app.pixelrois.add(mask)
 
     def remove_roi(self):
         if self.app.active_roi is not None:
@@ -117,7 +113,7 @@ class ManageRoiToolbar(QtGui.QToolBar):
 
         self.app = app
 
-        from .pixelmaskcreator import PixelMaskCreator
+        from ..util.pixelmaskcreator import PixelMaskCreator
         self.pixelmask_creator = PixelMaskCreator(axes=app.aximage,
                                                   canvas=app.fig.canvas,
                                                   update=app.fig.canvas.draw,
@@ -131,7 +127,7 @@ class ManageRoiToolbar(QtGui.QToolBar):
         self.add_pixelmask.setToolTip(tooltip)
         self.add_pixelmask.triggered.connect(lambda: setattr(self.pixelmask_creator, 'enabled', True))
 
-        from .branchmaskcreator import BranchMaskCreator
+        from ..util.branchmaskcreator import BranchMaskCreator
         self.branchmask_creator = BranchMaskCreator(axes=app.aximage, canvas=app.fig.canvas,
                                                     update=app.fig.canvas.draw,
                                                     notify=self.add_branch)
@@ -143,7 +139,7 @@ class ManageRoiToolbar(QtGui.QToolBar):
         self.add_branchmask.setToolTip(tooltip)
         self.add_branchmask.triggered.connect(lambda: setattr(self.branchmask_creator, 'enabled', True))
 
-        from .polymaskcreator import PolyMaskCreator
+        from ..util.polymaskcreator import PolyMaskCreator
         self.polymask_creator = PolyMaskCreator(axes=app.aximage,
                                                 canvas=app.fig.canvas,
                                                 update=app.fig.canvas.draw,
@@ -160,7 +156,7 @@ class ManageRoiToolbar(QtGui.QToolBar):
 
         tooltip = "Delete/remove the currently selected roi."
 
-        self.remove_mask = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_DialogDiscardButton),'X')
+        self.remove_mask = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_DialogDiscardButton), 'X')
         self.remove_mask.setToolTip(tooltip)
         self.remove_mask.triggered.connect(self.remove_roi)
 

@@ -18,57 +18,54 @@ class TreeItem(object):
 
 
 class RootItem(TreeItem):
-    def __init__(self):
+    def __init__(self, rois):
         # the list of lists holding the rois
-        self.groups = []
+        self.rois = rois
+
+    # @property
+    # def groups(self):
+    #     return [RoiGroupItem(parent=self, rois=self.rois, type=t) for t in self.types]
 
     @property
     def types(self):
-        return [g.type for g in self.groups]
-
-    def add(self, item):
-        _type = type(item)
-        if _type not in self.types:
-            self.groups.append(RoiGroupItem(self, _type))
-        # the index of the type
-        idx = self.types.index(_type)
-        self.groups[idx].add(item)
+        return [t for t in set(type(roi) for roi in self.rois)]
 
     def row(self, child):
         assert (type(child) is RoiGroupItem)
         return self.types.index(child.type)
 
     def child(self, row):
-        return self.groups[row]
+        type = self.types[row]
+        return RoiGroupItem(parent = self,rois = self.rois, type = type) #self.groups[row]
 
     def parent(self):
         return None
 
     def __len__(self):
-        return len(self.groups)
+        return len(set(type(roi) for roi in self.rois))
 
 
 class RoiGroupItem(TreeItem):
-    def __init__(self, parent, type):
+    def __init__(self, parent, rois, type):
+        self.rois = rois
         self.type = type
-        self.items = []
         self.__parent = parent
 
+    @property
+    def items(self):
+        return [roi for roi in self.rois if type(roi) is self.type]
+
     def row(self, child):
-        return self.items.index(child)
+        return self.items.index(child.item)
 
     def child(self, row):
-        return self.items[row]
+        return RoiItem(parent = self,item = self.rois[row])
 
     def parent(self):
         return self.__parent
 
     def __len__(self):
-        return len(self.items)
-
-    def add(self, item):
-        assert(type(item) is self.type)
-        self.items.append(RoiItem(self, item))
+        return 0#len(self.items)
 
     def __repr__(self):
         return "RoiGroup: " + str(self.type.__name__)
@@ -95,9 +92,7 @@ class RoiItem(TreeItem):
 class RoiTreeModel(QtCore.QAbstractItemModel):
     def __init__(self, rois, parent=None):
         super(RoiTreeModel, self).__init__(parent)
-        self.root = RootItem()
-        for roi in rois:
-            self.root.add(roi)
+        self.root = RootItem(rois=rois)
 
     def flags(self, index):
         """Determines whether a field is editable, selectable checkable etc"""
@@ -152,9 +147,9 @@ class RoiTreeModel(QtCore.QAbstractItemModel):
     def rowCount(self, parent):
         """Returns the number of rows under the given parent index. When the parent is valid
         it means that rowCount is returning the number of children of parent."""
-        parent = parent.internalPointer() if parent.isValid() else self.root
+        item = parent.internalPointer() if parent.isValid() else self.root
 
-        return len(parent)
+        return len(item)
 
 
 class RoiTreeWidget(QtGui.QTreeView):

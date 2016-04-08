@@ -1,16 +1,10 @@
-
-from dumb.util.swc  import Branch
-from .polyroi import PolygonRoi
+from .polygon import PolygonArtist
 
 
-class SegmentRoi(PolygonRoi):
-
-    def __init__(self, branch, datasource, axes, parent, **kwargs):
-        #Branch.__init__(self, data = branch)
-        PolygonRoi.__init__(self, outline = branch.outline, datasource = datasource, axes = axes, **kwargs)
-        self.branch = branch
-        #super(SegmentRoi,self).__init__(data = data, axes = axes, **kwargs)
-        self.parent = parent
+class SegmentArtist(PolygonArtist):
+    def __init__(self, mask, parent, branchartist):
+        super(SegmentArtist, self).__init__(mask, parent)
+        self.branchartist = branchartist
 
     def split(self, nsegments):
         """Split the segment in n equal parts, and adopt the parent branch accordingly."""
@@ -25,20 +19,19 @@ class SegmentRoi(PolygonRoi):
         i = self.parent.children.index(self)
 
         # split segment and convert new branch objects into segments
-        subsegments = [SegmentRoi(branch = s,
-                                  datasource = self.datasource,
-                                  parent = self.parent,
-                                  axes = self.axes)
-                            for s in self.branch.split(nsegments = nsegments)]
+        subsegments = [SegmentRoi(branch=s,
+                                  datasource=self.datasource,
+                                  parent=self.parent,
+                                  axes=self.axes)
+                       for s in self.branch.split(nsegments=nsegments)]
 
         for ax in holdaxes:
             for ss in subsegments:
                 ss.toggle_hold(ax)
 
-        self.parent.children[i:i+1] = subsegments
+        self.parent.children[i:i + 1] = subsegments
 
-
-    def join(self, next = True):
+    def join(self, next=True):
         """
         Join two segments into one. Arguments:
             next:    True or False, denote whether to join the segment with the preceeding or succeeding one.
@@ -52,10 +45,10 @@ class SegmentRoi(PolygonRoi):
 
         # select the slice of the two segments to join
         # this will work event for i = 0,1,len(childrens)-1 and len(childrens)
-        s = slice(i,i+2) if next else slice(i-1,i+1)
+        s = slice(i, i + 2) if next else slice(i - 1, i + 1)
 
         # we cant join next/previous, if there is no respective other segment
-        if len(children[s])<2:
+        if len(children[s]) < 2:
             return
 
         # remember the hold axes
@@ -68,10 +61,10 @@ class SegmentRoi(PolygonRoi):
         # create joined segment
         joined = children[s][0].branch.append(children[s][1].branch)
         # convert the plain branch into Branch+Artist class
-        joined = SegmentRoi(branch = joined,
-                            datasource = self.datasource,
-                            parent = self.parent,
-                            axes = self.axes)
+        joined = SegmentRoi(branch=joined,
+                            datasource=self.datasource,
+                            parent=self.parent,
+                            axes=self.axes)
         # replace the two old ones in list
         children[s] = [joined]
 
