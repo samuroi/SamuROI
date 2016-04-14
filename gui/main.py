@@ -170,20 +170,39 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
         self.file_menu = FileMenu(app=self)
         menubar.addMenu(self.file_menu)
 
-        from .widgets.linescan import LineScanCanvas
-        linescandockwidget = QtGui.QDockWidget("Linescan", parent=self)
-        linescanwidget = LineScanCanvas(segmentation=self.segmentation)
-        linescandockwidget.setWidget(linescanwidget)
-        self.addDockWidget(QtCore.Qt.TopDockWidgetArea, linescandockwidget)
+        from .widgets.linescan import LineScanDockWidget
+        self.linescandockwidget = LineScanDockWidget("Linescan", parent=self, segmentation=self.segmentation)
+        self.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.linescandockwidget)
 
         from .roitree import RoiTreeWidget
         roitreedockwidget = QtGui.QDockWidget("Treeview", parent=self)
-        roitreewidget = RoiTreeWidget(parent=roitreedockwidget, rois=self.segmentation.masks)
+        roitreewidget = RoiTreeWidget(parent=roitreedockwidget, masks=self.segmentation.masks,
+                                      selection=self.segmentation.selection)
         roitreedockwidget.setWidget(roitreewidget)
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, roitreedockwidget)
 
-        # finally, select first branch
-        # self.next_branch()
+        self.segmentation.selection.added.append(self.on_selection_change)
+        self.segmentation.selection.removed.append(self.on_selection_change)
+
+    def on_selection_change(self, mask):
+        """
+        When the selection is either a single branch, or a set of segments from only one branch,
+        then update the linescan widget.
+        """
+        from ..masks.branch import BranchMask
+        from ..masks.segment import SegmentMask
+        branches = set()
+        if BranchMask in self.segmentation.selection.types():
+            for branch in self.segmentation.selection[BranchMask]:
+                branches.add(branch)
+
+        # add all segment parents to the branch set
+        if SegmentMask in self.segmentation.selection.types():
+            for segment in self.segmentation.selection[SegmentMask]:
+                branches.add(segment.parent)
+
+        if len(branches) == 1:
+            self.linescandockwidget.set_branch(branches.pop()   )
 
     def _setup_toolbars(self):
         # self.toolbar_navigation = self.fig.canvas.manager.toolbar

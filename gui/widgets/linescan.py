@@ -1,9 +1,8 @@
+from PyQt4 import QtGui
+
 from matplotlib.figure import Figure
-# import the Qt4Agg FigureCanvas object, that binds Figure to  Qt4Agg backend. It also inherits from QWidget
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 
-
-# from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
 
 class LineScanCanvas(FigureCanvas):
     """Class to represent the FigureCanvas widget"""
@@ -21,6 +20,7 @@ class LineScanCanvas(FigureCanvas):
         if hasattr(self, "active_frame_line"):
             self.active_frame_line.remove()
         self.active_frame_line = self.axes.axvline(x=self.segmentation.active_frame, color='black', lw=1.)
+        self.draw()
 
     def set_branch(self, branch):
         # disconnect from the old branch
@@ -38,27 +38,47 @@ class LineScanCanvas(FigureCanvas):
             tmax = self.segmentation.data.shape[-1]
             nsegments = len(self.branch.children)
             self.imglinescan = self.axes.imshow(self.linescan, interpolation='nearest', aspect='auto',
-                                                           cmap='viridis', extent=(0, tmax, nsegments, 0))
+                                                cmap='viridis', extent=(0, tmax, nsegments, 0))
             self.axes.set_ylim(nsegments, 0)
+            self.draw()
 
     def on_branch_change(self, branch):
         """Will be called when the branch masks number of children change."""
-        if self.imglinescan is not None:
+        if self.imglinescan is None:
+            # dirty, but ok, this will create the line scan if the branch has children
+            self.set_branch(branch)
+        else:
             self.imglinescan.set_data(self.linescan)
-            tmax = self.parent.data.shape[-1]
-            nsegments = len(self.children)
+            tmax = self.segmentation.data.shape[-1]
+            nsegments = len(self.branch.children)
             self.imglinescan.set_extent((0, tmax, nsegments, 0))
-            self.parent.axraster.set_ylim(nsegments, 0)
+            self.axes.set_ylim(nsegments, 0)
+            self.draw()
 
     @property
     def linescan(self):
         """
         Calculate the trace for all children and return a 2D array aka linescan for that branch roi.
         """
-        return numpy.row_stack((child.apply() for child in self.children))
+        import numpy
+        data = self.segmentation.data
+        overlay = self.segmentation.overlay
+        return numpy.row_stack((child(data, overlay) for child in self.branch.children))
 
     def onclick(self, event):
-        if self.branch is not None:
+        if self.branch is not None and event.ydata is not None:
             index = int(event.ydata)
             if index < len(self.branch.children):
-                self.active_segment = self.active_branch.children[index]
+                self.segmentation.selection.clear()
+                self.segmentation.selection.add(self.branch.children[index])
+
+
+class LineScanDockWidget(QtGui.QDockWidget):
+    def __init__(self, name, parent, segmentation):
+        super(LineScanDockWidget, self).__init__(name, parent)
+
+        self.linescanwidget = LineScanCanvas(segmentation=segmentation)
+        self.setWidget(self.linescanwidget)
+
+    def set_branch(self, branch):
+        self.linescanwidget.set_branch(branch)

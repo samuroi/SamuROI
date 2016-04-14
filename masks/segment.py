@@ -8,6 +8,12 @@ class SegmentMask(Branch, Mask):
         super(SegmentMask, self).__init__(data)
         self.parent = parent
 
+        from .polygon import PolygonMask
+        self.__polygon = PolygonMask(corners=self.outline)
+
+    def __call__(self, data, mask):
+        return self.__polygon(data, mask)
+
     def split(self, nsegments=2, length=None, k=1, s=0):
         """Split the segment in n equal parts, and adopt the parent branch accordingly."""
 
