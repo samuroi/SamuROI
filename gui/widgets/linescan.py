@@ -78,7 +78,20 @@ class LineScanDockWidget(QtGui.QDockWidget):
         super(LineScanDockWidget, self).__init__(name, parent)
 
         self.linescanwidget = LineScanCanvas(segmentation=segmentation)
-        self.setWidget(self.linescanwidget)
+
+        from PyQt4 import QtCore
+        from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT
+        self.toolbar_navigation = NavigationToolbar2QT(self.linescanwidget, self, coordinates=False)
+        self.toolbar_navigation.setOrientation(QtCore.Qt.Vertical)
+        self.toolbar_navigation.setFloatable(True)
+
+        self.widget = QtGui.QWidget()
+        self.layout = QtGui.QHBoxLayout()
+        self.layout.addWidget(self.toolbar_navigation)
+        self.layout.addWidget(self.linescanwidget)
+
+        self.widget.setLayout(self.layout)
+        self.setWidget(self.widget)
 
     def set_branch(self, branch):
         self.linescanwidget.set_branch(branch)

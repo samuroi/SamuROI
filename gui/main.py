@@ -132,9 +132,9 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
         # ntb = NavigationToolbar(qmc, self.main_widget)
 
         # create widget for frame
-        from .widgets.frame import FrameCanvas
-        self.frame_canvas = FrameCanvas(segmentation=self.segmentation)
-        self.vbl.addWidget(self.frame_canvas)
+        from .widgets.frame import FrameWidget
+        self.frame_widget = FrameWidget(parent=self, segmentation=self.segmentation)
+        self.vbl.addWidget(self.frame_widget)
 
         # self.tracecache = DendriteSegmentationTool.TraceCache()
         # """dictionary that notifies artists on cache clear."""
@@ -202,10 +202,34 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
                 branches.add(segment.parent)
 
         if len(branches) == 1:
-            self.linescandockwidget.set_branch(branches.pop()   )
+            self.linescandockwidget.set_branch(branches.pop())
 
     def _setup_toolbars(self):
-        # self.toolbar_navigation = self.fig.canvas.manager.toolbar
+        # # self.toolbar_navigation = self.fig.canvas.manager.toolbar
+        # from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT
+        #
+        # class CanvasProxy(object):
+        #     def __init__(self, parent):
+        #         self.parent = parent
+        #
+        #     def __get__(self, instance, owner):
+        #         print "getter"
+        #         return self.parent.frame_widget.frame_canvas
+        #
+        #     def __set__(self, obj, value):
+        #         pass
+        #
+        #     def __del__(self, obj):
+        #         pass
+        #
+        # class FOO(NavigationToolbar2QT):
+        #     canvas = CanvasProxy(self)
+        #
+        #     def __init__(self, parent):
+        #         super(FOO, self).__init__(None, parent)
+        #
+        # self.toolbar_navigation = FOO(self)
+        # self.addToolBar(self.toolbar_navigation)
 
         from .toolbars import NavigationToolbar
         self.toolbar_branch = NavigationToolbar(parent=self)

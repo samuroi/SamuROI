@@ -2,7 +2,7 @@ import numpy
 
 import matplotlib
 
-from PyQt4 import QtCore
+from PyQt4 import QtCore, QtGui
 
 from .canvasbase import CanvasBase
 
@@ -12,7 +12,7 @@ class FrameCanvas(CanvasBase):
 
     def __init__(self, segmentation):
         # initialize the canvas where the Figure renders into
-        CanvasBase.__init__(self)
+        super(FrameCanvas, self).__init__()
 
         self.segmentation = segmentation
         self.__active_frame = None
@@ -43,6 +43,7 @@ class FrameCanvas(CanvasBase):
         self.segmentation.masks.removed.append(self.on_mask_removed)
         self.segmentation.overlay_changed.append(self.on_overlay_changed)
         self.segmentation.data_changed.append(self.on_data_changed)
+        self.segmentation.active_frame_changed.append(self.on_active_frame_cahnged)
         self.segmentation.selection.added.append(self.on_selection_added)
         self.segmentation.selection.removed.append(self.on_selection_removed)
 
@@ -112,18 +113,8 @@ class FrameCanvas(CanvasBase):
     def toggle_overlay(self):
         self.show_overlay = not self.show_overlay
 
-    @property
-    def active_frame(self):
-        return self.__active_frame
-
-    @active_frame.setter
-    def active_frame(self, f):
-        if not 0 <= f < self.segmentation.data.shape[2]:
-            raise Exception("Frame needs to be in range [0,{}]".format(self.segmentation.data.shape[2]))
-
-        self.__active_frame = f
-        self.frameimg.set_data(self.segmentation.data[..., f])
-
+    def on_active_frame_cahnged(self):
+        self.frameimg.set_data(self.segmentation.data[..., self.segmentation.active_frame])
         self.draw()
 
     def onpick(self, event):
@@ -133,3 +124,39 @@ class FrameCanvas(CanvasBase):
             if not (event.guiEvent.modifiers() and QtCore.Qt.ShiftModifier):
                 self.segmentation.selection.clear()
             self.segmentation.selection.add(event.artist.mask)
+
+
+class FrameWidget(QtGui.QWidget):
+    def __init__(self, parent, segmentation):
+        super(FrameWidget, self).__init__(parent)
+
+        self.segmentation = segmentation
+
+        # create a vertical box layout widget
+        self.vbl = QtGui.QVBoxLayout()
+
+        self.frame_canvas = FrameCanvas(segmentation)
+        self.vbl.addWidget(self.frame_canvas)
+
+        from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT
+        self.toolbar_navigation = NavigationToolbar2QT(self.frame_canvas, self, coordinates=False)
+
+        self.frame_slider = QtGui.QSlider(QtCore.Qt.Horizontal)
+        self.frame_slider.setMinimum(0)
+        self.frame_slider.setMaximum(self.segmentation.data.shape[2])
+        self.frame_slider.setTickInterval(1)
+        self.frame_slider.setSingleStep(1)
+        self.frame_slider.setPageStep(self.segmentation.data.shape[2] / 10)
+        self.frame_slider.valueChanged.connect(self.on_slider_changed)
+
+        self.toollayout = QtGui.QHBoxLayout()
+
+        self.toollayout.addWidget(self.toolbar_navigation)
+        self.toollayout.addWidget(self.frame_slider)
+
+        self.vbl.addLayout(self.toollayout)
+        self.setLayout(self.vbl)
+
+    def on_slider_changed(self, value):
+        print "foo", value
+        self.segmentation.active_frame = value
