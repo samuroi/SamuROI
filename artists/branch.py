@@ -28,6 +28,7 @@ class BranchArtist(PolygonArtist):
         # remove all old children
         for child in self.children:
             child.remove()
+        self.children = []
 
         for segment in self.mask.segments:
             child = SegmentArtist(segment, self)
