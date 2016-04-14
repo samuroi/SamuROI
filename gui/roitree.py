@@ -1,6 +1,6 @@
 from PyQt4 import QtCore, QtGui
 
-from PyQt4.QtCore import QVariant, pyqtSignal
+from PyQt4.QtCore import QVariant, QObject, pyqtSignal
 
 
 class TreeItem(object):
@@ -67,8 +67,12 @@ class RootItem(TreeItem):
         assert (row < len(self.groups))
         return self.groups[row]
 
-    def parent(self):
-        return None
+    def parent(self, mask=None):
+        if mask is None:
+            return None
+        else:
+            index = self.types.index(type(mask))
+            return self.groups[index].parent(mask=mask)
 
     def __len__(self):
         return len(self.groups)
@@ -110,14 +114,17 @@ class RoiGroupItem(TreeItem):
         self.model.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
 
     def row(self, child):
-        return self.items.index(child.item)
+        return self.items.index(child)
 
     def child(self, row):
         assert (len(self.items) > row)
         return self.items[row]
 
-    def parent(self):
-        return self.__parent
+    def parent(self, mask=None):
+        if mask is None:
+            return self.__parent
+        else:
+            pass
 
     def __len__(self):
         return len(self.items)
@@ -126,23 +133,59 @@ class RoiGroupItem(TreeItem):
         return "RoiGroup: " + str(self.type.__name__)
 
 
-class RoiItem(TreeItem):
+class RoiItem(TreeItem, QObject):
+    mask_changed = pyqtSignal(object)
+
     def __init__(self, parent, mask):
         super(RoiItem, self).__init__(parent.masks)
         self.mask = mask
-        self._parent = parent
+        self.children = []
+        self.__parent = parent
+        if hasattr(self.mask, "children"):
+            for child in self.mask.children:
+                self.children.append(RoiItem(parent=self, mask=child))
+        if hasattr(self.mask, "changed"):
+            # translate signal to qt signal in order to dispatch execution to gui event loop
+            self.mask.changed.append(self.mask_changed.emit)
+        self.mask_changed.connect(self.on_mask_changed)
+
+    def on_mask_changed(self, mask):
+        assert (mask is self.mask)
+
+        # remove all children
+        own_index = self.model.createIndex(self.parent().row(self), 0, self)
+        self.model.beginRemoveRows(own_index, 0, len(self))
+        self.children = []
+        self.model.endRemoveRows()
+
+        # add all children
+        self.model.beginInsertRows(own_index, 0, len(mask.children))
+        for child in mask.children:
+            self.children.append(RoiItem(parent=self, mask=child))
+        self.model.endInsertRows()
+        self.model.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
+
+    @property
+    def model(self):
+        return self.__parent.model
 
     def row(self, child):
-        return None
+        if len(self.children) == 0:
+            return None
+        else:
+            return self.children.index(child)
 
     def child(self, row):
-        return None
+        if len(self.children) == 0:
+            return None
+        else:
+            return self.children[row]
 
     def __len__(self):
-        return 0
+        return len(self.children)
 
     def parent(self):
-        return self._parent
+        return self.__parent
 
 
 class RoiTreeModel(QtCore.QAbstractItemModel):
@@ -180,6 +223,14 @@ class RoiTreeModel(QtCore.QAbstractItemModel):
 
         return QVariant(repr(item))
 
+    def mask_to_index(self, mask):
+        """return the model index of the given mask"""
+        parentitem = self.root.parent(mask=mask)
+
+        row = parentitem.row(mask=mask)
+
+        return self.createIndex(row, 0, parentitem)
+
     def index(self, row, column, parent):
         """
         Returns the index of the item in the model specified by the given row,
@@ -192,9 +243,7 @@ class RoiTreeModel(QtCore.QAbstractItemModel):
         # get the respective child from the parent item
         child = item.child(row)
 
-        childindex = self.createIndex(row, column, child)
-        # assert(childindex.parent() == parent)
-        return childindex
+        return self.createIndex(row, column, child)
 
     def parent(self, index):
         """Returns the parent of the model item with the given index. If the item has
@@ -219,31 +268,37 @@ class RoiTreeModel(QtCore.QAbstractItemModel):
 
         return len(item)
 
-        # def insertRows(self,row,count,parent):
-        #     """
-        #     inserts count rows into the model before the given row. Items in the new row will be children of the item represented by the parent model index.
-        #     Args:
-        #         row: int
-        #         count:  int
-        #         parent: qmodelindex
-        #
-        #     Returns:
-        #
-        #     """
-        #     self.beginInsertRows(QModelIndex(), position, position+c-1);
-        #
-        #     rows += c;
-        #
-        #     endInsertRows();
-        #     return true;
-
 
 class RoiTreeWidget(QtGui.QTreeView):
-    def __init__(self, parent, rois):
+    mask_selected = pyqtSignal(object)
+    mask_deselected = pyqtSignal(object)
+
+    def __init__(self, parent, rois, selection=None):
         QtGui.QTreeView.__init__(self, parent)
+        self.rois = rois
+        self.selection = selection
 
         self.model = RoiTreeModel(rois=rois, parent=self)
+        # allow multi selection with shift and ctrl
+        self.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
         self.setModel(self.model)
 
         # self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         # self.customContextMenuRequested.connect(self.openMenu)
+
+        if selection is not None:
+            self.selection.added.append(self.mask_selected.emit)
+            self.selection.removed.append(self.mask_deselected.emit)
+
+        self.mask_selected.connect(self.on_selected)
+        self.mask_deselected.connect(self.on_deselected)
+
+    def on_selected(self, mask):
+        selectionmodel = self.selectionModel()
+
+        # selectionmodel.select(index, QtGui.QItemSelectionModel.Select)
+
+    def on_deselected(self, mask):
+        selectionmodel = self.selectionModel()
+
+        # selectionmodel.select(index, QtGui.QItemSelectionModel.Deselect)

@@ -26,6 +26,10 @@ class BranchMask(Branch, Mask):
 
         self.changed = Event()
 
+    @property
+    def children(self):
+        return self.segments
+
     def __call__(self, data, mask):
         return self.__polygon(data, mask)
 
