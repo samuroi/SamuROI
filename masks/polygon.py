@@ -9,7 +9,12 @@ class PolygonMask(Mask):
     """
 
     def __init__(self, corners):
+        # TODO maybe get rid of either corners or outline
         self.corners = corners
+
+    @property
+    def outline(self):
+        return self.corners
 
     @property
     def lowerleft(self):

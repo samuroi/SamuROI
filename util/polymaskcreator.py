@@ -55,8 +55,9 @@ class PolyMaskCreator(MaskCreator):
         self.status.y.append(self.status.y[0])
         self.status.line.set_data(self.status.x, self.status.y)
         self.status.line.remove()
-        x, y = self.status.x, self.status.y
+        import numpy
+        corners = numpy.column_stack([self.status.x, self.status.y])
         self.update()
         self.status = None
-        # set status to none bevore notify, because notify might disable the creator
-        self.notify(PolygonMask(x, y))
+        # set status to none before notify, because notify might disable the creator
+        self.notify(PolygonMask(corners=corners))

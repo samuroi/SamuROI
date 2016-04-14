@@ -176,11 +176,11 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
         linescandockwidget.setWidget(linescanwidget)
         self.addDockWidget(QtCore.Qt.TopDockWidgetArea, linescandockwidget)
 
-        # from .roitree import RoiTreeWidget
-        # roitreedockwidget = QtGui.QDockWidget("Treeview",parent=self)
-        # roitreewidget = RoiTreeWidget(parent=roitreedockwidget, rois=self.rois)
-        # roitreedockwidget.setWidget(roitreewidget)
-        # self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, roitreedockwidget)
+        from .roitree import RoiTreeWidget
+        roitreedockwidget = QtGui.QDockWidget("Treeview", parent=self)
+        roitreewidget = RoiTreeWidget(parent=roitreedockwidget, rois=self.segmentation.masks)
+        roitreedockwidget.setWidget(roitreewidget)
+        self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, roitreedockwidget)
 
         # finally, select first branch
         # self.next_branch()

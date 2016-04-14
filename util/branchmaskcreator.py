@@ -2,6 +2,7 @@ from matplotlib.patches import Polygon, Circle
 
 from .maskcreator import MaskCreator
 from ..masks.branch import BranchMask
+from ..masks.circle import CircleMask
 from ..util.branch import Branch
 
 
@@ -101,7 +102,10 @@ class BranchMaskCreator(MaskCreator):
                 self.artist.remove()
                 self.update()
                 self.artist = None
-                branch = BranchMask(x=self.x, y=self.y, z=[0 for i in self.x], r=self.r)
+                if len(self.x) == 1:
+                    mask = CircleMask(center=[self.x[0], self.y[0]], radius=self.r[0])
+                else:
+                    mask = BranchMask(x=self.x, y=self.y, z=[0 for i in self.x], r=self.r)
                 self.x, self.y, self.r = [], [], []
-                self.notify(branch)
+                self.notify(mask)
                 self.enabled = False

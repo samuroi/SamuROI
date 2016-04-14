@@ -116,7 +116,7 @@ class ManageRoiToolbar(ToolBar):
     def add_mask(self,mask):
         self.active_segmentation.masks.add(mask)
         self.active_segmentation.selection.clear()
-        self.active_frame_canvas.selection.add(mask)
+        self.active_segmentation.selection.add(mask)
 
     def add_branch(self, mask):
         self.branchmask_creator.enabled = False

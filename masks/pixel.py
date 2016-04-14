@@ -2,9 +2,13 @@ from .mask import Mask
 
 
 class PixelMask(Mask):
-    def __init__(self, xy, x=None, y=None):
+    def __init__(self, xy=None, x=None, y=None):
         # use private variables and properties because masks should be either immutable or use changed signal.
-        self.__x, self.__y = xy
+        if xy is None:
+            self.__x = x
+            self.__y = y
+        else:
+            self.__x, self.__y = xy
 
     @property
     def x(self):

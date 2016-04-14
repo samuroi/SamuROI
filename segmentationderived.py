@@ -1,6 +1,6 @@
 from .segmentation import Segmentation
 
-from maskset import MaskSet
+from maskset import MaskSelection, MaskSet
 from util.event import Event
 
 from collections import MutableSequence

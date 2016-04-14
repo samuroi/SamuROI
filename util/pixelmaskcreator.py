@@ -68,4 +68,4 @@ class PixelMaskCreator(MaskCreator):
         self.update()
         self.status = None
         # set status to None bevore notify, because the notify callback might disable the creator
-        self.notify(PixelMask(x,y))
+        self.notify(PixelMask(x=x, y=y))
