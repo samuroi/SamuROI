@@ -18,6 +18,7 @@ class Branch(object):
     """
 
     def __init__(self, data=None, x=None, y=None, z=None, r=None):
+        super(Branch,self).__init__()
         """Can be constructed as Branch(kind,x,y,z,r) or Branch(swc[start:end])."""
         if data is not None:
             self.data = data

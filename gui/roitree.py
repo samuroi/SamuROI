@@ -187,6 +187,9 @@ class RoiItem(TreeItem, QObject):
     def parent(self):
         return self.__parent
 
+    def __repr__(self):
+        return self.mask.name
+
 
 class RoiTreeModel(QtCore.QAbstractItemModel):
     mask_added = pyqtSignal(object)

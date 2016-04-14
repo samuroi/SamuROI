@@ -3,6 +3,7 @@ from .mask import Mask
 
 class CircleMask(Mask):
     def __init__(self, center, radius):
+        super(CircleMask,self).__init__()
         # use private variables and properties because masks should be either immutable or use changed signal.
         self.__center = center
         self.__radius = radius

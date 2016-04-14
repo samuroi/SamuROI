@@ -3,6 +3,7 @@ from .mask import Mask
 
 class PixelMask(Mask):
     def __init__(self, xy=None, x=None, y=None):
+        super(PixelMask,self).__init__()
         # use private variables and properties because masks should be either immutable or use changed signal.
         if xy is None:
             self.__x = x

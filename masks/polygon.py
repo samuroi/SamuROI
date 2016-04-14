@@ -9,6 +9,7 @@ class PolygonMask(Mask):
     """
 
     def __init__(self, corners):
+        super(PolygonMask,self).__init__()
         # TODO maybe get rid of either corners or outline
         self.corners = corners
 
