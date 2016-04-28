@@ -140,39 +140,7 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
                                         selectionmodel=self.roiselectionmodel)
         self.vbl.addWidget(self.frame_widget)
 
-        # self.tracecache = DendriteSegmentationTool.TraceCache()
-        # """dictionary that notifies artists on cache clear."""
-        #
-        # self.mask_artists = dict()
-        # """a mapping from mask to artist"""
-        #
-        # self.mask_selection = MaskSelection(artists=self.mask_artists)
-        # """A set of all selected masks. To change selection state, just add/remove masks to/from the set."""
-        #
-
-        #
-        # self._setup_figure()
         self._setup_toolbars()
-
-        # self.active_frame = 0
-
-        # self.colors = ['#CC0099', '#CC3300', '#99CC00', '#00FF00', '#006600', '#999966']
-        # self.colorcycle = itertools.cycle(self.colors)
-
-        # connect gui update slots to data change signals
-        # self.masks.added.append(self.on_mask_added)
-        # self.masks.removed.append(self.on_mask_removed)
-        # self.overlay_changed.append(self.on_overlay_changed)
-        # self.data_changed.append(self.on_data_changed)
-        # self.postprocessor_changed.append(self.on_postprocessor_changed)
-
-        # self.fig.canvas.mpl_disconnect(self.fig.canvas.manager.key_press_handler_id)
-        # self.fig.canvas.mpl_connect('key_press_event', noraise(self.onkey))
-
-        from .filemenu import FileMenu
-        menubar = self.menuBar()
-        self.file_menu = FileMenu(app=self)
-        menubar.addMenu(self.file_menu)
 
         from .widgets.linescan import LineScanDockWidget
         self.linescandockwidget = LineScanDockWidget("Linescan", parent=self, segmentation=self.segmentation)
@@ -186,11 +154,19 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
         self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.tracedockwidget)
 
         from .roitree import RoiTreeWidget
-        roitreedockwidget = QtGui.QDockWidget("Treeview", parent=self)
-        roitreewidget = RoiTreeWidget(parent=roitreedockwidget, model=self.roitreemodel,
-                                      selectionmodel=self.roiselectionmodel)
-        roitreedockwidget.setWidget(roitreewidget)
-        self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, roitreedockwidget)
+        self.roitreedockwidget = QtGui.QDockWidget("Treeview", parent=self)
+        self.roitreewidget = RoiTreeWidget(parent=self.roitreedockwidget, model=self.roitreemodel,
+                                           selectionmodel=self.roiselectionmodel)
+        self.roitreedockwidget.setWidget(self.roitreewidget)
+        self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.roitreedockwidget)
+
+        from .filemenu import FileMenu
+        from .viewmenu import ViewMenu
+        self.menubar = self.menuBar()
+        self.file_menu = FileMenu(app=self)
+        self.menubar.addMenu(self.file_menu)
+        self.view_menu = ViewMenu(parent=self)
+        self.menubar.addMenu(self.view_menu)
 
     def on_selection_change(self, selected, deselected):
         """

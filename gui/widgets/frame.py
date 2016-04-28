@@ -158,7 +158,7 @@ class FrameWidget(QtGui.QWidget):
 
         self.frame_slider = QtGui.QSlider(QtCore.Qt.Horizontal)
         self.frame_slider.setMinimum(0)
-        self.frame_slider.setMaximum(self.segmentation.data.shape[2])
+        self.frame_slider.setMaximum(self.segmentation.data.shape[2]-1)
         self.frame_slider.setTickInterval(1)
         self.frame_slider.setSingleStep(1)
         self.frame_slider.setPageStep(self.segmentation.data.shape[2] / 10)

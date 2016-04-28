@@ -7,14 +7,19 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 class LineScanCanvas(FigureCanvas):
     """Class to represent the FigureCanvas widget"""
 
-    def __init__(self, segmentation):
+    def __init__(self, segmentation, selectionmodel):
         # initialize the canvas where the Figure renders into
         FigureCanvas.__init__(self, Figure())
         self.segmentation = segmentation
+        self.selectionmodel = selectionmodel
         self.branch = None
         self.imglinescan = None
         self.axes = self.figure.add_subplot(111)
         self.mpl_connect('button_press_event', self.onclick)
+        self.axes.set_xlim(0,self.segmentation.data.shape[-1])
+        self.axes.autoscale(False,axis = 'x')
+
+        self.segmentation.active_frame_changed.append(self.on_active_frame_change)
 
     def on_active_frame_change(self):
         if hasattr(self, "active_frame_line"):
@@ -69,15 +74,24 @@ class LineScanCanvas(FigureCanvas):
         if self.branch is not None and event.ydata is not None:
             index = int(event.ydata)
             if index < len(self.branch.children):
-                self.segmentation.selection.clear()
-                self.segmentation.selection.add(self.branch.children[index])
+                # get the model underlying the selection
+                model = self.selectionmodel.model()
+                # get the model tree item for the selected segment
+                treeitem = model.mask2roitreeitem[self.branch.children[index]]
+
+                # clear selection and add the segment
+                self.selectionmodel.clear()
+                self.selectionmodel.select(model.createIndex(treeitem.parent().row(treeitem), 0, treeitem),
+                                           QtGui.QItemSelectionModel.Select)
+        if event.xdata is not None:
+            self.segmentation.active_frame = event.xdata
 
 
 class LineScanDockWidget(QtGui.QDockWidget):
     def __init__(self, name, parent, segmentation):
         super(LineScanDockWidget, self).__init__(name, parent)
 
-        self.linescanwidget = LineScanCanvas(segmentation=segmentation)
+        self.linescanwidget = LineScanCanvas(segmentation=segmentation, selectionmodel=parent.roiselectionmodel)
 
         from PyQt4 import QtCore
         from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT

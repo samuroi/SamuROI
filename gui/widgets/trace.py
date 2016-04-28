@@ -17,10 +17,13 @@ class TraceCanvas(CanvasBase):
         self.segmentation = segmentation
         self.selectionmodel = selectionmodel
 
+        self.axes.set_xlim(0, self.segmentation.data.shape[-1])
+        self.axes.autoscale(False, axis='x')
+
         # a dictionary mapping from mask to matplotlib line artist
         self.__traces = {}
 
-        self.segmentation.active_frame_changed.append(self.on_active_frame_cahnged)
+        self.segmentation.active_frame_changed.append(self.on_active_frame_change)
 
         # connect to selection model
         self.selectionmodel.selectionChanged.connect(self.on_selection_changed)
@@ -60,8 +63,11 @@ class TraceCanvas(CanvasBase):
     def on_overlay_changed(self):
         raise NotImplementedError()
 
-    def on_active_frame_cahnged(self):
-        raise NotImplementedError()
+    def on_active_frame_change(self):
+        if hasattr(self, "active_frame_line"):
+            self.active_frame_line.remove()
+        self.active_frame_line = self.axes.axvline(x=self.segmentation.active_frame, color='black', lw=1.)
+        self.draw()
 
     def onpick(self, event):
         return
