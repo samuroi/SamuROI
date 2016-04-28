@@ -129,11 +129,15 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
         # create a vertical box layout widget
         self.vbl = QtGui.QVBoxLayout(self.centralWidget())
 
-        # ntb = NavigationToolbar(qmc, self.main_widget)
+        # create itemmodel and selectionmodel for the masks
+        from .roiitemmodel import RoiTreeModel
+        self.roitreemodel = RoiTreeModel(rois=self.segmentation.masks, parent=self)
+        self.roiselectionmodel = QtGui.QItemSelectionModel(self.roitreemodel)
 
         # create widget for frame
         from .widgets.frame import FrameWidget
-        self.frame_widget = FrameWidget(parent=self, segmentation=self.segmentation)
+        self.frame_widget = FrameWidget(parent=self, segmentation=self.segmentation,
+                                        selectionmodel=self.roiselectionmodel)
         self.vbl.addWidget(self.frame_widget)
 
         # self.tracecache = DendriteSegmentationTool.TraceCache()
@@ -173,18 +177,17 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
         from .widgets.linescan import LineScanDockWidget
         self.linescandockwidget = LineScanDockWidget("Linescan", parent=self, segmentation=self.segmentation)
         self.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.linescandockwidget)
+        # connect to selection to update linescan if selection allows to deduce a branch
+        self.roiselectionmodel.selectionChanged.connect(self.on_selection_change)
 
         from .roitree import RoiTreeWidget
         roitreedockwidget = QtGui.QDockWidget("Treeview", parent=self)
-        roitreewidget = RoiTreeWidget(parent=roitreedockwidget, masks=self.segmentation.masks,
-                                      selection=self.segmentation.selection)
+        roitreewidget = RoiTreeWidget(parent=roitreedockwidget, model=self.roitreemodel,
+                                      selectionmodel=self.roiselectionmodel)
         roitreedockwidget.setWidget(roitreewidget)
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, roitreedockwidget)
 
-        self.segmentation.selection.added.append(self.on_selection_change)
-        self.segmentation.selection.removed.append(self.on_selection_change)
-
-    def on_selection_change(self, mask):
+    def on_selection_change(self, selected, deselected):
         """
         When the selection is either a single branch, or a set of segments from only one branch,
         then update the linescan widget.
@@ -192,14 +195,12 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
         from ..masks.branch import BranchMask
         from ..masks.segment import SegmentMask
         branches = set()
-        if BranchMask in self.segmentation.selection.types():
-            for branch in self.segmentation.selection[BranchMask]:
-                branches.add(branch)
-
-        # add all segment parents to the branch set
-        if SegmentMask in self.segmentation.selection.types():
-            for segment in self.segmentation.selection[SegmentMask]:
-                branches.add(segment.parent)
+        for index in self.roiselectionmodel.selectedIndexes():
+            item = index.internalPointer()
+            if hasattr(item, "mask") and type(item.mask) is BranchMask:
+                branches.add(item.mask)
+            elif hasattr(item, "mask") and type(item.mask) is SegmentMask:
+                branches.add(item.mask.parent)
 
         if len(branches) == 1:
             self.linescandockwidget.set_branch(branches.pop())

@@ -94,7 +94,7 @@ class NavigationToolbar(ToolBar):
         """The index of the rois that is currently selected"""
 
         self.btn_prev_roi = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSkipBackward), "<<")
-        self.btn_prev_roi.triggered.connect(self.active_segmentation.mask_cycle.prev)
+        # self.btn_prev_roi.triggered.connect(self.active_segmentation.mask_cycle.prev)
         self.btn_prev_roi.setToolTip("Select next roi.")
 
         self.btn_prev_seg = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSeekBackward), "<")
@@ -108,15 +108,15 @@ class NavigationToolbar(ToolBar):
         self.btn_next_seg.setToolTip("Select previous segment.")
 
         self.btn_next_roi = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSkipForward), ">>")
-        self.btn_next_roi.triggered.connect(self.active_segmentation.mask_cycle.next)
+        # self.btn_next_roi.triggered.connect(self.active_segmentation.mask_cycle.next)
         self.btn_next_roi.setToolTip("Select previous roi.")
 
 
 class ManageRoiToolbar(ToolBar):
     def add_mask(self,mask):
         self.active_segmentation.masks.add(mask)
-        self.active_segmentation.selection.clear()
-        self.active_segmentation.selection.add(mask)
+        # self.active_segmentation.selection.clear()
+        # self.active_segmentation.selection.add(mask)
 
     def add_branch(self, mask):
         self.branchmask_creator.enabled = False
@@ -134,13 +134,12 @@ class ManageRoiToolbar(ToolBar):
         self.add_mask(mask)
 
     def remove_roi(self):
-        # careful here: if we remove masks from the segmentation, this will notify the frame_canvas
-        # and the frame_canvas might update its selection, i.e. we might modify the list we loop upon
-        # hence: create a copy of the selection
-        masks = [mask for mask in self.active_segmentation.selection]
         assert (self.active_segmentation is self.active_frame_canvas.segmentation)
-        for mask in masks:
-            self.active_segmentation.masks.remove(mask)
+        for index in self.parent().roiselectionmodel.selectedIndexes():
+            item = index.internalPointer()
+            # check if the selection is a parent mask
+            if hasattr(item, "mask") and not hasattr(item.mask,"parent"):
+                self.active_segmentation.masks.remove(item.mask)
 
     def __init__(self, parent, *args, **kwargs):
         super(ManageRoiToolbar, self).__init__(parent=parent, *args, **kwargs)

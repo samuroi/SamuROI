@@ -10,11 +10,12 @@ from .canvasbase import CanvasBase
 class FrameCanvas(CanvasBase):
     """Plot the actual 2D frame of data with all mask artists and the overlay"""
 
-    def __init__(self, segmentation):
+    def __init__(self, segmentation, selectionmodel):
         # initialize the canvas where the Figure renders into
         super(FrameCanvas, self).__init__()
 
         self.segmentation = segmentation
+        self.selectionmodel = selectionmodel
         self.__active_frame = None
 
         pmin, pmax = 10, 99
@@ -44,8 +45,9 @@ class FrameCanvas(CanvasBase):
         self.segmentation.overlay_changed.append(self.on_overlay_changed)
         self.segmentation.data_changed.append(self.on_data_changed)
         self.segmentation.active_frame_changed.append(self.on_active_frame_cahnged)
-        self.segmentation.selection.added.append(self.on_selection_added)
-        self.segmentation.selection.removed.append(self.on_selection_removed)
+
+        # connect to selection model
+        self.selectionmodel.selectionChanged.connect(self.on_selection_changed)
 
         self.mpl_connect('pick_event', self.onpick)
 
@@ -63,14 +65,20 @@ class FrameCanvas(CanvasBase):
         overlay[..., 3] = numpy.logical_not(self.segmentation.overlay)
         return overlay
 
-    def on_selection_added(self, mask):
-        artist = self.get_artist(mask)
-        artist.selected = True
-        self.draw()
-
-    def on_selection_removed(self, mask):
-        artist = self.get_artist(mask)
-        artist.selected = False
+    def on_selection_changed(self, selected, deselected):
+        for range in deselected:
+            for index in range.indexes():
+                item = index.internalPointer()
+                # the selection could also be a whole tree of e.g. BranchMasks
+                if hasattr(item, "mask"):
+                    artist = self.get_artist(item.mask)
+                    artist.selected = False
+        for range in selected:
+            for index in range.indexes():
+                item = index.internalPointer()
+                if hasattr(item, "mask"):
+                    artist = self.get_artist(item.mask)
+                    artist.selected = True
         self.draw()
 
     def on_data_changed(self):
@@ -119,15 +127,22 @@ class FrameCanvas(CanvasBase):
 
     def onpick(self, event):
         with self.draw_on_exit():
-            # TODO add logic for selecting segments
+            # get the mask from the event
+            mask = event.artist.mask
+            # get the model underlying the selection
+            model = self.selectionmodel.model()
+            # get the model tree item for the mask
+            treeitem = model.mask2roitreeitem[mask]
+
             # if shift key is not pressed clear selection
             if not (event.guiEvent.modifiers() and QtCore.Qt.ShiftModifier):
-                self.segmentation.selection.clear()
-            self.segmentation.selection.add(event.artist.mask)
+                self.selectionmodel.clear()
+            self.selectionmodel.select(model.createIndex(treeitem.parent().row(treeitem), 0, treeitem),
+                                       QtGui.QItemSelectionModel.Select)
 
 
 class FrameWidget(QtGui.QWidget):
-    def __init__(self, parent, segmentation):
+    def __init__(self, parent, segmentation, selectionmodel):
         super(FrameWidget, self).__init__(parent)
 
         self.segmentation = segmentation
@@ -135,7 +150,7 @@ class FrameWidget(QtGui.QWidget):
         # create a vertical box layout widget
         self.vbl = QtGui.QVBoxLayout()
 
-        self.frame_canvas = FrameCanvas(segmentation)
+        self.frame_canvas = FrameCanvas(segmentation, selectionmodel)
         self.vbl.addWidget(self.frame_canvas)
 
         from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT
@@ -158,5 +173,4 @@ class FrameWidget(QtGui.QWidget):
         self.setLayout(self.vbl)
 
     def on_slider_changed(self, value):
-        print "foo", value
         self.segmentation.active_frame = value

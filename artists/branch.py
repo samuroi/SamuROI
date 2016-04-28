@@ -35,6 +35,11 @@ class BranchArtist(PolygonArtist):
             self.axes.add_artist(child)
             self.children.append(child)
 
+        # todo this is actually a dirty hack, since it does only resolve the problem for branch and segment overlap
+        # and not the general problem of overlapping masks
+        # deactivate picking of branch, if it is covered by segments
+        self.set_picker(len(self.children) == 0)
+
     def remove(self):
         for child in self.children:
             child.remove()

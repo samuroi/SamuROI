@@ -14,6 +14,8 @@ class MaskSet(MutableSet):
 
         self.added = Event()
         """A signal that will be triggered when an item was added to the set."""
+        self.preremove = Event()
+        """A signal that will be triggered when an item is about to be removed from the set."""
         self.removed = Event()
         """A signal that will be triggered when an item was removed from the set."""
 
@@ -45,6 +47,8 @@ class MaskSet(MutableSet):
 
     def discard(self, elem):
         emit = elem in self.__items[type(elem)]
+        if emit:
+            self.preremove(elem)
         self.__items[type(elem)].discard(elem)
         if emit:
             self.removed(elem)
