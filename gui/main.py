@@ -180,6 +180,11 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
         # connect to selection to update linescan if selection allows to deduce a branch
         self.roiselectionmodel.selectionChanged.connect(self.on_selection_change)
 
+        from .widgets.trace import TraceDockWidget
+        self.tracedockwidget = TraceDockWidget("Trace", parent=self, segmentation=self.segmentation,
+                                               selectionmodel=self.roiselectionmodel)
+        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.tracedockwidget)
+
         from .roitree import RoiTreeWidget
         roitreedockwidget = QtGui.QDockWidget("Treeview", parent=self)
         roitreewidget = RoiTreeWidget(parent=roitreedockwidget, model=self.roitreemodel,
