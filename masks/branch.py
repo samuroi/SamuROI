@@ -42,7 +42,7 @@ class BranchMask(Branch, Mask):
         """
         Calculate the trace for all children and return a 2D array aka linescan for that branch roi.
         """
-        return numpy.row_stack((child.apply(data, mask) for child in self.segments))
+        return numpy.row_stack((child(data, mask) for child in self.segments))
 
     def append(self, other, gap=False):
         raise NotImplementedError("not supported for branchmask")

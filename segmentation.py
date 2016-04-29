@@ -48,24 +48,32 @@ class Segmentation(object):
     @property
     def pixelmasks(self):
         from .masks.pixel import PixelMask
+        if PixelMask not in self.masks.types():
+            return
         for i in self.masks[PixelMask]:
             yield i
 
     @property
     def branchmasks(self):
         from .masks.branch import BranchMask
+        if BranchMask not in self.masks.types():
+            return
         for i in self.masks[BranchMask]:
             yield i
 
     @property
     def circlemasks(self):
         from .masks.circle import CircleMask
+        if CircleMask not in self.masks.types():
+            return
         for i in self.masks[CircleMask]:
             yield i
 
     @property
     def polymasks(self):
         from .masks.polygon import PolygonMask
+        if PolygonMask not in self.masks.types():
+            return
         for i in self.masks[PolygonMask]:
             yield i
 
@@ -183,14 +191,14 @@ class Segmentation(object):
             for i, m in enumerate(self.pixelmasks):
                 f.create_dataset('pixels/' + str(i) + '/roi', data=m.pixels)
                 if traces:
-                    f.create_dataset('pixels/' + str(i) + '/trace', data=m.trace)
+                    f.create_dataset('pixels/' + str(i) + '/trace', data=m(self.data, self.overlay))
 
         if freehands:
             f.create_group('freehands')
             for i, m in enumerate(self.polymasks):
                 f.create_dataset('freehands/' + str(i) + '/roi', data=m.outline)
                 if traces:
-                    f.create_dataset('freehands/' + str(i) + '/trace', data=m.trace)
+                    f.create_dataset('freehands/' + str(i) + '/trace', data=m(self.data, self.overlay))
 
         if circles:
             f.create_group('circles')
@@ -198,24 +206,24 @@ class Segmentation(object):
                 data = [m.center[0], m.center[1], m.radius]
                 f.create_dataset('circles/' + str(i) + '/roi', data=data)
                 if traces:
-                    f.create_dataset('circles/' + str(i) + '/trace', data=m.trace)
+                    f.create_dataset('circles/' + str(i) + '/trace', data=m(self.data, self.overlay))
 
         if branches:
             for i, b in enumerate(self.branchmasks):
                 f.create_group('branches/{}'.format(i))
-                f.create_dataset('branches/{}/roi'.format(i), data=b.branch)
+                # f.create_dataset('branches/{}/roi'.format(i), data=b.branch)
                 f.create_dataset('branches/{}/outline'.format(i), data=b.outline)
                 if traces:
-                    f.create_dataset('branches/{}/trace'.format(i), data=b.trace)
+                    f.create_dataset('branches/{}/trace'.format(i), data=b(self.data, self.overlay))
                 if len(b.children) > 0:
-                    f.create_dataset('branches/{}/linescan'.format(i), data=b.linescan)
+                    f.create_dataset('branches/{}/linescan'.format(i), data=b.linescan(self.data,self.overlay))
                 f.create_group('branches/{}/segments'.format(i))
                 for j, s in enumerate(b.children):
                     f.create_group('branches/{}/segments/{}'.format(i, j))
-                    f.create_dataset('branches/{}/segments/{}/roi'.format(i, j), data=s.branch)
+                    # f.create_dataset('branches/{}/segments/{}/roi'.format(i, j), data=s.branch)
                     f.create_dataset('branches/{}/segments/{}/outline'.format(i, j), data=s.outline)
                     if traces:
-                        f.create_dataset('branches/{}/segments/{}/trace'.format(i, j), data=s.trace)
+                        f.create_dataset('branches/{}/segments/{}/trace'.format(i, j), data=s(self.data, self.overlay))
         # write stuff to disc
         f.close()
 
