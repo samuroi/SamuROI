@@ -19,6 +19,7 @@ class TraceCanvas(CanvasBase):
 
         self.axes.set_xlim(0, self.segmentation.data.shape[-1])
         self.axes.autoscale(False, axis='x')
+        self.figure.set_tight_layout(True)
 
         # a dictionary mapping from mask to matplotlib line artist
         self.__traces = {}
@@ -27,8 +28,10 @@ class TraceCanvas(CanvasBase):
 
         # connect to selection model
         self.selectionmodel.selectionChanged.connect(self.on_selection_changed)
+        self.segmentation.overlay_changed.append(self.update_traces)
+        self.segmentation.data_changed.append(self.update_traces)
 
-        self.mpl_connect('pick_event', self.onpick)
+        self.mpl_connect('button_press_event', self.onclick)
 
     def get_artist(self, mask):
         count = sum(1 for artist in self.axes.artists if artist.mask is mask)
@@ -36,6 +39,16 @@ class TraceCanvas(CanvasBase):
             raise Exception("Count = " + str(count))
         # find the artist associated with the mask
         return next(artist for artist in self.axes.artists if artist.mask is mask)
+
+    def update_traces(self):
+        tmax = self.segmentation.data.shape[-1]
+        x = numpy.linspace(0, tmax, tmax, False, dtype=int)
+        for mask, line in self.__traces.iteritems():
+            tracedata = mask(self.segmentation.data, self.segmentation.overlay)
+            line.set_data(x, tracedata)
+        self.axes.relim()
+        self.axes.autoscale_view(scalex=False)
+        self.draw()
 
     def on_selection_changed(self, selected, deselected):
         for range in deselected:
@@ -57,35 +70,15 @@ class TraceCanvas(CanvasBase):
                     self.__traces[item.mask] = line
         self.draw()
 
-    def on_data_changed(self):
-        raise NotImplementedError()
-
-    def on_overlay_changed(self):
-        raise NotImplementedError()
-
     def on_active_frame_change(self):
         if hasattr(self, "active_frame_line"):
             self.active_frame_line.remove()
         self.active_frame_line = self.axes.axvline(x=self.segmentation.active_frame, color='black', lw=1.)
         self.draw()
 
-    def onpick(self, event):
-        return
-        # for now, do nothing, since if we change the selection from here, this will feedback into our own
-        # on_selection_change and remove items we clicked on.
-        # with self.draw_on_exit():
-        #     # get the mask from the event
-        #     mask = event.artist.mask
-        #     # get the model underlying the selection
-        #     model = self.selectionmodel.model()
-        #     # get the model tree item for the mask
-        #     treeitem = model.mask2roitreeitem[mask]
-        #
-        #     # if shift key is not pressed clear selection
-        #     if not (event.guiEvent.modifiers() and QtCore.Qt.ShiftModifier):
-        #         self.selectionmodel.clear()
-        #     self.selectionmodel.select(model.createIndex(treeitem.parent().row(treeitem), 0, treeitem),
-        #                                QtGui.QItemSelectionModel.Select)
+    def onclick(self, event):
+        if event.xdata is not None:
+            self.segmentation.active_frame = event.xdata
 
 
 class TraceDockWidget(QtGui.QDockWidget):

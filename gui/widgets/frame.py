@@ -39,6 +39,7 @@ class FrameCanvas(CanvasBase):
         self.axes.set_autoscale_on(False)
 
         self.figure.colorbar(self.frameimg, ax=self.axes)
+        self.figure.set_tight_layout(True)
 
         self.segmentation.masks.added.append(self.on_mask_added)
         self.segmentation.masks.removed.append(self.on_mask_removed)
@@ -171,6 +172,11 @@ class FrameWidget(QtGui.QWidget):
 
         self.vbl.addLayout(self.toollayout)
         self.setLayout(self.vbl)
+
+        self.segmentation.active_frame_changed.append(self.on_active_frame_changed)
+
+    def on_active_frame_changed(self):
+        self.frame_slider.setValue(self.segmentation.active_frame)
 
     def on_slider_changed(self, value):
         self.segmentation.active_frame = value

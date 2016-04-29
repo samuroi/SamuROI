@@ -18,14 +18,27 @@ class LineScanCanvas(FigureCanvas):
         self.mpl_connect('button_press_event', self.onclick)
         self.axes.set_xlim(0,self.segmentation.data.shape[-1])
         self.axes.autoscale(False,axis = 'x')
+        self.figure.set_tight_layout(True)
 
         self.segmentation.active_frame_changed.append(self.on_active_frame_change)
+        self.segmentation.overlay_changed.append(self.on_overlay_change)
+        self.segmentation.data_changed.append(self.on_data_change)
 
     def on_active_frame_change(self):
         if hasattr(self, "active_frame_line"):
             self.active_frame_line.remove()
         self.active_frame_line = self.axes.axvline(x=self.segmentation.active_frame, color='black', lw=1.)
         self.draw()
+
+    def on_overlay_change(self):
+        # force update
+        if self.branch is not None:
+            self.set_branch(self.branch)
+
+    def on_data_change(self):
+        # force update
+        if self.branch is not None:
+            self.set_branch(self.branch)
 
     def set_branch(self, branch):
         # disconnect from the old branch
