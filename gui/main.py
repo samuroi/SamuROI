@@ -1,8 +1,7 @@
-import numpy
-
-from PyQt4 import QtCore, QtGui
-
 from contextlib import contextmanager
+
+import numpy
+from PyQt4 import QtCore, QtGui
 
 from ..segmentationderived import SegmentationExtension
 
@@ -160,8 +159,8 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
         self.roitreedockwidget.setWidget(self.roitreewidget)
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.roitreedockwidget)
 
-        from .filemenu import FileMenu
-        from .viewmenu import ViewMenu
+        from epo.gui.menus.file import FileMenu
+        from epo.gui.menus.view import ViewMenu
         self.menubar = self.menuBar()
         self.file_menu = FileMenu(app=self)
         self.menubar.addMenu(self.file_menu)
