@@ -5,6 +5,7 @@ from matplotlib.figure import Figure
 
 from .canvasbase import CanvasBase
 
+
 class LineScanCanvas(CanvasBase):
     """Class to represent the FigureCanvas widget"""
 
@@ -15,6 +16,7 @@ class LineScanCanvas(CanvasBase):
         self.selectionmodel = selectionmodel
         self.branch = None
         self.imglinescan = None
+        self.scatterevents = None
         self.axes = self.figure.add_subplot(111)
         self.mpl_connect('button_press_event', self.onclick)
         self.axes.set_xlim(0, self.segmentation.data.shape[-1])
@@ -25,73 +27,88 @@ class LineScanCanvas(CanvasBase):
         self.segmentation.overlay_changed.append(self.on_overlay_change)
         self.segmentation.data_changed.append(self.on_data_change)
 
+        # cache calculated line scans in dictionary having the branch mask as key
+        self.__linescans = {}
+
     def on_active_frame_change(self):
         if hasattr(self, "active_frame_line"):
             self.active_frame_line.remove()
-        self.active_frame_line = self.axes.axvline(x=self.segmentation.active_frame, color='black', lw=1.)
+        self.active_frame_line = self.axes.axvline(x=self.segmentation.active_frame + 0.5, color='black', lw=1.)
         self.draw()
 
     def on_overlay_change(self):
+        self.__linescans.clear()
         # force update
         if self.branch is not None:
-            self.set_branch(self.branch)
+            self.redraw()
 
     def on_data_change(self):
+        self.__linescans.clear()
         # force update
         if self.branch is not None:
-            self.set_branch(self.branch)
+            self.redraw()
 
     def set_branch(self, branch):
+        if self.branch is branch:
+            return
         # disconnect from the old branch
         if self.branch is not None:
             self.branch.changed.remove(self.on_branch_change)
 
-        # remove the old linescan image
-        if self.imglinescan is not None:
-            self.imglinescan.remove()
-
         self.branch = branch
         self.branch.changed.append(self.on_branch_change)
+        self.redraw()
 
-        if len(self.branch.children) > 0:
-            tmax = self.segmentation.data.shape[-1]
-            nsegments = len(self.branch.children)
-            self.imglinescan = self.axes.imshow(self.linescan, interpolation='nearest', aspect='auto',
-                                                cmap='viridis', extent=(0, tmax, nsegments, 0))
-            self.axes.set_ylim(nsegments, 0)
+    def redraw(self):
+        with self.draw_on_exit():
+            # remove the old linescan image
+            if self.imglinescan is not None:
+                self.imglinescan.remove()
+            if self.scatterevents is not None:
+                self.scatterevents.remove()
+                self.scatterevents = None
 
-            from itertools import cycle
-            cycol = cycle('bgrcm').next
-            for i, child in enumerate(self.branch.children):
-                if hasattr(child, "events"):
-                    indices = child.events.indices
-                    if not hasattr(child, "color"):
-                        child.color = cycol()
-                    self.axes.scatter(child.events.indices, (i+0.5) * numpy.ones_like(indices), color=child.color)
-            self.draw()
+            if len(self.branch.children) > 0:
+                tmax = self.segmentation.data.shape[-1]
+                nsegments = len(self.branch.children)
+                self.imglinescan = self.axes.imshow(self.linescan, interpolation='nearest', aspect='auto',
+                                                    cmap='viridis', extent=(0, tmax, nsegments, 0))
+                self.axes.set_ylim(nsegments, 0)
+
+                from itertools import cycle
+                cycol = cycle('bgrcm').next
+                eventsx = []
+                eventsy = []
+                colors = []
+                for i, child in enumerate(self.branch.children):
+                    if hasattr(child, "events"):
+                        indices = child.events.indices
+                        if not hasattr(child, "color"):
+                            child.color = cycol()
+                        eventsx.append(child.events.indices)
+                        eventsy.append(numpy.ones_like(child.events.indices) * (i + 0.5))
+                        colors += [child.color for i in child.events.indices]
+                if len(colors) > 0:
+                    self.scatterevents = self.axes.scatter(numpy.concatenate(eventsx),
+                                                           numpy.concatenate(eventsy),
+                                                           color=colors)
 
     def on_branch_change(self, branch):
         """Will be called when the branch masks number of children change."""
-        if self.imglinescan is None:
-            # dirty, but ok, this will create the line scan if the branch has children
-            self.set_branch(branch)
-        else:
-            self.imglinescan.set_data(self.linescan)
-            tmax = self.segmentation.data.shape[-1]
-            nsegments = len(self.branch.children)
-            self.imglinescan.set_extent((0, tmax, nsegments, 0))
-            self.axes.set_ylim(nsegments, 0)
-            self.draw()
+        self.redraw()
 
     @property
     def linescan(self):
         """
         Calculate the trace for all children and return a 2D array aka linescan for that branch roi.
         """
+        if self.branch in self.__linescans:
+            return self.__linescans[self.branch]
         import numpy
         data = self.segmentation.data
         overlay = self.segmentation.overlay
-        return numpy.row_stack((child(data, overlay) for child in self.branch.children))
+        self.__linescans[self.branch] = numpy.row_stack((child(data, overlay) for child in self.branch.children))
+        return self.__linescans[self.branch]
 
     def onclick(self, event):
         if self.branch is not None and event.ydata is not None:

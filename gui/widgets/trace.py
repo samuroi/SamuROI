@@ -21,8 +21,10 @@ class TraceCanvas(CanvasBase):
         self.axes.autoscale(False, axis='x')
         self.figure.set_tight_layout(True)
 
-        # a dictionary mapping from mask to matplotlib line artist
+        # a dictionary mapping from mask to all matplotlib line artist
         self.__artist = {}
+        # a dictionary mapping from mask to trace line artist
+        self.__traces = {}
 
         self.segmentation.active_frame_changed.append(self.on_active_frame_change)
 
@@ -60,6 +62,7 @@ class TraceCanvas(CanvasBase):
                     for artist in self.__artist[item.mask]:
                         artist.remove()
                     del self.__artist[item.mask]
+                    del self.__traces[item.mask]
         from itertools import cycle
         cycol = cycle('bgrcmk').next
 
@@ -72,6 +75,7 @@ class TraceCanvas(CanvasBase):
                         item.mask.color = cycol()
                     tracedata = item.mask(self.segmentation.data, self.segmentation.overlay)
                     line, = self.axes.plot(tracedata, color=item.mask.color)
+                    self.__traces[item.mask] = line
                     # put a handle of the mask on the artist
                     line.mask = item.mask
                     artists.append(line)

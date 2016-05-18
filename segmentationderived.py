@@ -100,7 +100,7 @@ class SegmentationExtension(Segmentation):
     def active_frame(self, f):
         if not 0 <= f < self.data.shape[2]:
             raise Exception("Frame needs to be in range [0,{}[".format(self.data.shape[2]))
-        self.__active_frame = f
+        self.__active_frame = int(f)
         self.active_frame_changed()
 
     # @property

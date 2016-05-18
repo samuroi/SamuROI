@@ -9,6 +9,8 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 class CanvasBase(FigureCanvas):
     """Plot the actual 2D frame of data with all mask artists and the overlay"""
 
+    # idea: we could implement our own context manager which could be used as a decorator to directly disable draw.
+
     @contextmanager
     def disable_draw(self):
         # store the original draw method
@@ -27,7 +29,7 @@ class CanvasBase(FigureCanvas):
         self.draw = draw
 
     @contextmanager
-    def draw_on_exit(self):
+    def draw_on_exit(self, func = None):
         # store the original draw method
         draw = self.draw
 
