@@ -2,15 +2,15 @@ from PyQt4 import QtGui
 
 import numpy
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 
+from .canvasbase import CanvasBase
 
-class LineScanCanvas(FigureCanvas):
+class LineScanCanvas(CanvasBase):
     """Class to represent the FigureCanvas widget"""
 
     def __init__(self, segmentation, selectionmodel):
         # initialize the canvas where the Figure renders into
-        FigureCanvas.__init__(self, Figure())
+        super(LineScanCanvas, self).__init__()
         self.segmentation = segmentation
         self.selectionmodel = selectionmodel
         self.branch = None

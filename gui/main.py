@@ -11,101 +11,19 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
     The main class that is doing the event handling, organizes the gui and puts together the plot.
     """
 
-    class TraceCache(dict):
-        """
-        notify all rois with cached traces to update their plots on cach clearing.
-        """
-
-        def clear(self):
-            rois = self.keys()
-            dict.clear(self)
-            for roi in rois:
-                roi.notify()
-
-    def on_data_changed(self, d):
-        # force recalculation of traces
-        with self.disable_draw():
-            self.tracecache.clear()
-            # set proper ylimit for axtraceactive and axtracehold
-            for ax in [self.axtraceactive] + self.axtracehold:
-                if len(ax.lines) <= 1: continue  # skip axes if it only contains one line (the frame marker)
-                ymin, ymax = 0, 0
-                for l in ax.lines:
-                    x, y = l.get_data()
-                    # filter out the vertical frame marker line
-                    if len(x) <= 2: continue
-                    ymin = min(numpy.min(y), ymin)
-                    ymax = max(numpy.max(y), ymax)
-                ax.set_ylim(ymin * 0.95, ymax * 1.05)
-        self.fig.canvas.draw()
-
-    def on_overlay_changed(self, m):
-        # force recalculation of traces
-        with self.disable_draw():
-            self.tracecache.clear()
-            # set proper ylimit for axtraceactive and axtracehold
-            for ax in [self.axtraceactive] + self.axtracehold:
-                if len(ax.lines) <= 1: continue  # skip axes if it only contains one line (the frame marker)
-                ymin, ymax = 0, 0
-                for l in ax.lines:
-                    x, y = l.get_data()
-                    # filter out the vertical frame marker line
-                    if len(x) <= 2: continue
-                    ymin = min(numpy.min(y), ymin)
-                    ymax = max(numpy.max(y), ymax)
-                ax.set_ylim(ymin * 0.95, ymax * 1.05)
-        self.fig.canvas.draw()
-
-    def split_segment(self, segment, parts=2):
-        """Split the given segment in to equal parts."""
-        # segment = self.active_segment if segment is None else segment
-
-        # there might be no active segment
-        if segment is None:
-            return
-
-        # get the index of the old segment in the parents child list
-        i = segment.parent.children.index(segment)
-
-        segment.split(nsegments=parts)
-        if segment.parent.active:
-            self.active_segment = segment.parent.children[i]
-
-    def join_segments(self, segment, next=True):
-        """
-        Join two segments into one. Arguments:
-            segment: A segment of any branch. Defaults to the active segment.
-            next:    True or False, denote whether to join the segment with the preceeding or succeeding one.
-        """
-        # segment = self.active_segment if segment is None else segment
-
-        # there might be no active segment
-        if segment is None:
-            return
-
-        # create and retrieve the new segment
-        joined = segment.join(next=next)
-
-        # make the new segment active
-        if segment.parent.active:
-            self.active_segment = joined
-
     @contextmanager
     def disable_draw(self):
-        # store the original draw method
-        draw = self.fig.canvas.draw
+        """use this context to temporarily disable all child widgets draw routines for better performance."""
 
-        def noop(*args):
-            pass
+        with self.frame_widget.frame_canvas.disable_draw():
+            yield
 
-        # override the draw method as noop
-        self.fig.canvas.draw = noop
+    @contextmanager
+    def draw_on_exit(self):
+        """use this context to temporarily disable all child widgets draw routines for better performance."""
 
-        # yield and run code in context
-        yield
-
-        # restore the original behaviour of draw
-        self.fig.canvas.draw = draw
+        with self.frame_widget.frame_canvas.draw_on_exit(), self.tracedockwidget.tracewidget.draw_on_exit(), self.linescandockwidget.linescanwidget.draw_on_exit():
+            yield
 
     def __init__(self, data, mean=None, pmin=10, pmax=99):
         """

@@ -49,8 +49,9 @@ class SplitJoinToolbar(ToolBar):
         #     self.app.split_branch(length=self.split_length_widget.value(), branch=self.app.active_branch)
 
     def split_all(self):
-        for mask in self.active_segmentation.branchmasks:
-            mask.split(length=self.split_length_widget.value())
+        with self.parent().draw_on_exit():
+            for mask in self.active_segmentation.branchmasks:
+                mask.split(length=self.split_length_widget.value())
 
     def __init__(self, parent, *args, **kwargs):
         super(SplitJoinToolbar, self).__init__(parent=parent, *args, **kwargs)
