@@ -1,5 +1,6 @@
 from PyQt4 import QtGui
 
+import numpy
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 
@@ -16,8 +17,8 @@ class LineScanCanvas(FigureCanvas):
         self.imglinescan = None
         self.axes = self.figure.add_subplot(111)
         self.mpl_connect('button_press_event', self.onclick)
-        self.axes.set_xlim(0,self.segmentation.data.shape[-1])
-        self.axes.autoscale(False,axis = 'x')
+        self.axes.set_xlim(0, self.segmentation.data.shape[-1])
+        self.axes.autoscale(False, axis='x')
         self.figure.set_tight_layout(True)
 
         self.segmentation.active_frame_changed.append(self.on_active_frame_change)
@@ -58,6 +59,15 @@ class LineScanCanvas(FigureCanvas):
             self.imglinescan = self.axes.imshow(self.linescan, interpolation='nearest', aspect='auto',
                                                 cmap='viridis', extent=(0, tmax, nsegments, 0))
             self.axes.set_ylim(nsegments, 0)
+
+            from itertools import cycle
+            cycol = cycle('bgrcm').next
+            for i, child in enumerate(self.branch.children):
+                if hasattr(child, "events"):
+                    indices = child.events.indices
+                    if not hasattr(child, "color"):
+                        child.color = cycol()
+                    self.axes.scatter(child.events.indices, (i+0.5) * numpy.ones_like(indices), color=child.color)
             self.draw()
 
     def on_branch_change(self, branch):

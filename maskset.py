@@ -34,6 +34,10 @@ class MaskSet(MutableSet):
         for val in self.__items.itervalues():
             for i in val:
                 yield i
+                # loop over children if the mask has children:)
+                # fixme actually this requires recursion...
+                for child in getattr(i,"children",[]):
+                    yield child
 
     def __getitem__(self, type):
         return self.__items[type]

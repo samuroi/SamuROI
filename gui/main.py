@@ -161,11 +161,15 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
 
         from epo.gui.menus.file import FileMenu
         from epo.gui.menus.view import ViewMenu
+        from epo.gui.menus.detect import FindEventsMenu
         self.menubar = self.menuBar()
         self.file_menu = FileMenu(app=self)
         self.menubar.addMenu(self.file_menu)
         self.view_menu = ViewMenu(parent=self)
         self.menubar.addMenu(self.view_menu)
+
+        self.find_events_menu = FindEventsMenu(parent=self)
+        self.menubar.addMenu(self.find_events_menu)
 
     def on_selection_change(self, selected, deselected):
         """

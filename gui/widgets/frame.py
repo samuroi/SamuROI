@@ -1,10 +1,19 @@
 import numpy
+import types
 
 import matplotlib
 
 from PyQt4 import QtCore, QtGui
 
 from .canvasbase import CanvasBase
+
+from ...masks.branch import BranchMask
+from ...masks.segment import SegmentMask
+from ...masks.circle import CircleMask
+from ...masks.polygon import PolygonMask
+from ...masks.pixel import PixelMask
+
+from matplotlib.patches import Polygon
 
 
 class FrameCanvas(CanvasBase):
@@ -17,6 +26,11 @@ class FrameCanvas(CanvasBase):
         self.segmentation = segmentation
         self.selectionmodel = selectionmodel
         self.__active_frame = None
+
+        # a map, mapping from mask to artist
+        self.__artists = {}
+        from itertools import cycle
+        self.colorcycle = cycle('bgrcmk')
 
         pmin, pmax = 10, 99
         vmin, vmax = numpy.percentile(self.segmentation.meandata.flatten(), q=[pmin, pmax])
@@ -41,8 +55,8 @@ class FrameCanvas(CanvasBase):
         self.figure.colorbar(self.frameimg, ax=self.axes)
         self.figure.set_tight_layout(True)
 
-        self.segmentation.masks.added.append(self.on_mask_added)
-        self.segmentation.masks.removed.append(self.on_mask_removed)
+        self.segmentation.masks.added.append(self.add_mask)
+        self.segmentation.masks.removed.append(self.remove_mask)
         self.segmentation.overlay_changed.append(self.on_overlay_changed)
         self.segmentation.data_changed.append(self.on_data_changed)
         self.segmentation.active_frame_changed.append(self.on_active_frame_cahnged)
@@ -51,13 +65,6 @@ class FrameCanvas(CanvasBase):
         self.selectionmodel.selectionChanged.connect(self.on_selection_changed)
 
         self.mpl_connect('pick_event', self.onpick)
-
-    def get_artist(self, mask):
-        count = sum(1 for artist in self.axes.artists if artist.mask is mask)
-        if count != 1:
-            raise Exception("Count = " + str(count))
-        # find the artist associated with the mask
-        return next(artist for artist in self.axes.artists if artist.mask is mask)
 
     @property
     def rgba_overlay(self):
@@ -72,39 +79,117 @@ class FrameCanvas(CanvasBase):
                 item = index.internalPointer()
                 # the selection could also be a whole tree of e.g. BranchMasks
                 if hasattr(item, "mask"):
-                    artist = self.get_artist(item.mask)
-                    artist.selected = False
+                    artist = self.__artists[item.mask]
+                    artist.set_selected(False)
         for range in selected:
             for index in range.indexes():
                 item = index.internalPointer()
                 if hasattr(item, "mask"):
-                    artist = self.get_artist(item.mask)
-                    artist.selected = True
+                    artist = self.__artists[item.mask]
+                    artist.set_selected(True)
         self.draw()
 
     def on_data_changed(self):
         raise NotImplementedError()
 
+    def create_outlined_artist(self, mask, color, **kwargs):
+        artist = matplotlib.patches.Polygon(xy=mask.outline + 0.5, lw=1, picker=True, fill=False, color='gray',
+                                            **kwargs)
+
+        artist.color = color
+        artist.mask = mask
+
+        #todo: make the branches children a polygonCollection for better performance
+
+        def set_selected(self, a):
+            if a is True:
+                self.set_linewidth(5)
+                self.set_edgecolor(self.color)
+            else:
+                self.set_linewidth(1)
+                self.set_edgecolor('gray')
+
+        artist.set_selected = types.MethodType(set_selected, artist)
+        self.__artists[mask] = artist
+        self.axes.add_artist(artist)
+
+    def create_circle_artist(self, mask, color, **kwargs):
+        artist = matplotlib.patches.Circle(radius=mask.radius, xy=mask.center, lw=1, picker=True, fill=False,
+                                           color='gray', **kwargs)
+
+        artist.color = color
+        artist.mask = mask
+
+        def set_selected(self, a):
+            if a is True:
+                self.set_linewidth(5)
+                self.set_edgecolor(self.color)
+            else:
+                self.set_linewidth(1)
+                self.set_edgecolor('gray')
+
+        artist.set_selected = types.MethodType(set_selected, artist)
+        self.__artists[mask] = artist
+        self.axes.add_artist(artist)
+
+    def create_pixel_artist(self, mask, color, **kwargs):
+        artist = self.axes.scatter(mask.x, mask.y, c='gray')
+
+        artist.color = color
+        artist.mask = mask
+
+        def set_selected(self, a):
+            if a is True:
+                self.set_sizes(numpy.ones_like(self.get_sizes()) * 30)
+                self.set_color(self.color)
+            else:
+                self.set_sizes(numpy.ones_like(self.get_sizes()) * 5)
+                self.set_color('gray')
+
+        artist.set_selected = types.MethodType(set_selected, artist)
+        self.__artists[mask] = artist
+
     def on_overlay_changed(self):
         self.overlayimg.set_data(self.rgba_overlay)
         self.draw()
 
-    def on_mask_added(self, mask):
+    def add_mask(self, mask):
         # create an artist based on the type of roi
-        from ...artists import create_artist
-        artist = create_artist(mask)
-        self.axes.add_artist(artist)
+        mapping = {
+            CircleMask: self.create_circle_artist,
+            BranchMask: self.create_outlined_artist,
+            SegmentMask: self.create_outlined_artist,
+            PolygonMask: self.create_outlined_artist,
+            PixelMask: self.create_pixel_artist
+        }
+        func = mapping[type(mask)]
+        if not hasattr(mask, "color"):
+            mask.color = self.colorcycle.next()
+        func(mask=mask, color=mask.color)
         if hasattr(mask, "changed"):
             mask.changed.append(self.on_mask_changed)
         self.draw()
 
-    def on_mask_removed(self, mask):
-        for artist in self.axes.artists:
-            if artist.mask is mask:
-                artist.remove()
-                self.draw()
+    def remove_mask(self, mask):
+        artist = self.__artists[mask]
+        artist.remove()
+        del self.__artists[mask]
+        self.draw()
 
-    def on_mask_changed(self, mask):
+    def on_mask_changed(self, modified_mask):
+        # remove all children,
+        # todo: because the children are already removed when this function is called,
+        #       we need to get the children to be removed from our own container...
+        to_be_removed = []
+        for mask, artist in self.__artists.iteritems():
+            # check if the mask has parent and the parent is the mask which was modified
+            if hasattr(mask, "parent") and mask.parent is modified_mask:
+                to_be_removed.append(mask)
+        for mask in to_be_removed:
+            self.__artists[mask].remove()
+            del self.__artists[mask]
+        for child in getattr(modified_mask, "children", []):
+            self.add_mask(child)
         self.draw()
 
     @property
@@ -159,7 +244,7 @@ class FrameWidget(QtGui.QWidget):
 
         self.frame_slider = QtGui.QSlider(QtCore.Qt.Horizontal)
         self.frame_slider.setMinimum(0)
-        self.frame_slider.setMaximum(self.segmentation.data.shape[2]-1)
+        self.frame_slider.setMaximum(self.segmentation.data.shape[2] - 1)
         self.frame_slider.setTickInterval(1)
         self.frame_slider.setSingleStep(1)
         self.frame_slider.setPageStep(self.segmentation.data.shape[2] / 10)

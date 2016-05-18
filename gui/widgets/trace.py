@@ -22,7 +22,7 @@ class TraceCanvas(CanvasBase):
         self.figure.set_tight_layout(True)
 
         # a dictionary mapping from mask to matplotlib line artist
-        self.__traces = {}
+        self.__artist = {}
 
         self.segmentation.active_frame_changed.append(self.on_active_frame_change)
 
@@ -55,19 +55,32 @@ class TraceCanvas(CanvasBase):
             for index in range.indexes():
                 item = index.internalPointer()
                 # the selection could also be a whole tree of e.g. BranchMasks
-                if hasattr(item, "mask") and item.mask in self.__traces:
+                if hasattr(item, "mask") and item.mask in self.__artist:
                     # remove the artist
-                    self.__traces[item.mask].remove()
-                    del self.__traces[item.mask]
+                    for artist in self.__artist[item.mask]:
+                        artist.remove()
+                    del self.__artist[item.mask]
+        from itertools import cycle
+        cycol = cycle('bgrcmk').next
+
         for range in selected:
             for index in range.indexes():
                 item = index.internalPointer()
-                if hasattr(item, "mask"):
+                if hasattr(item, "mask") and item.mask not in self.__artist:
+                    artists = []
+                    if not hasattr(item.mask, "color"):
+                        item.mask.color = cycol()
                     tracedata = item.mask(self.segmentation.data, self.segmentation.overlay)
-                    line, = self.axes.plot(tracedata)
+                    line, = self.axes.plot(tracedata, color=item.mask.color)
                     # put a handle of the mask on the artist
                     line.mask = item.mask
-                    self.__traces[item.mask] = line
+                    artists.append(line)
+                    if hasattr(item.mask, "events"):
+                        for x in item.mask.events.indices:
+                            line = self.axes.axvline(x=x, c=item.mask.color, lw=2)
+                            artists.append(line)
+                    self.__artist[item.mask] = artists
+
         self.draw()
 
     def on_active_frame_change(self):
