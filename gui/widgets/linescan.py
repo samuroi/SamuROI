@@ -26,6 +26,7 @@ class LineScanCanvas(CanvasBase):
         self.segmentation.active_frame_changed.append(self.on_active_frame_change)
         self.segmentation.overlay_changed.append(self.on_overlay_change)
         self.segmentation.data_changed.append(self.on_data_change)
+        self.segmentation.postprocessor_changed.append(self.on_data_change)
 
         # cache calculated line scans in dictionary having the branch mask as key
         self.__linescans = {}
@@ -108,7 +109,8 @@ class LineScanCanvas(CanvasBase):
         import numpy
         data = self.segmentation.data
         overlay = self.segmentation.overlay
-        self.__linescans[self.branch] = numpy.row_stack((child(data, overlay) for child in self.branch.children))
+        postprocessor = self.segmentation.postprocessor
+        self.__linescans[self.branch] = numpy.row_stack((postprocessor(child(data, overlay)) for child in self.branch.children))
         return self.__linescans[self.branch]
 
     def onclick(self, event):

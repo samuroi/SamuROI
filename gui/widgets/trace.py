@@ -32,6 +32,7 @@ class TraceCanvas(CanvasBase):
         self.selectionmodel.selectionChanged.connect(self.on_selection_changed)
         self.segmentation.overlay_changed.append(self.update_traces)
         self.segmentation.data_changed.append(self.update_traces)
+        self.segmentation.postprocessor_changed.append(self.update_traces)
 
         self.mpl_connect('button_press_event', self.onclick)
 
@@ -46,7 +47,7 @@ class TraceCanvas(CanvasBase):
         tmax = self.segmentation.data.shape[-1]
         x = numpy.linspace(0, tmax, tmax, False, dtype=int)
         for mask, line in self.__traces.iteritems():
-            tracedata = mask(self.segmentation.data, self.segmentation.overlay)
+            tracedata = self.segmentation.postprocessor(mask(self.segmentation.data, self.segmentation.overlay))
             line.set_data(x, tracedata)
         self.axes.relim()
         self.axes.autoscale_view(scalex=False)
