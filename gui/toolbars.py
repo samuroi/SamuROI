@@ -119,7 +119,7 @@ class NavigationToolbar(ToolBar):
 
 
 class ManageRoiToolbar(ToolBar):
-    def add_mask(self,mask):
+    def add_mask(self, mask):
         self.active_segmentation.masks.add(mask)
         # self.active_segmentation.selection.clear()
         # self.active_segmentation.selection.add(mask)
@@ -144,7 +144,7 @@ class ManageRoiToolbar(ToolBar):
         for index in self.parent().roiselectionmodel.selectedIndexes():
             item = index.internalPointer()
             # check if the selection is a parent mask
-            if hasattr(item, "mask") and not hasattr(item.mask,"parent"):
+            if hasattr(item, "mask") and not hasattr(item.mask, "parent"):
                 self.active_segmentation.masks.remove(item.mask)
 
     def __init__(self, parent, *args, **kwargs):
@@ -223,21 +223,29 @@ class TraceHoldToolbar(QtGui.QToolBar):
             self.holdbuttons.append(action)
 
 
-class PostTraceToolbar(QtGui.QToolBar):
-    # This defines a signal called 'revalidate' that takes no arguments.
-    revalidate = QtCore.pyqtSignal()
+from ..util.postprocessors import *
+
+
+class PostProcessorToolbar(ToolBar):
+    def update_posprocessor(self):
+        p = PostProcessorPipe()
+
+        if self.toggle_detrend.isChecked():
+            p.append(DetrendPostProcessor())
+        if self.toggle_smoothen.isChecked():
+            p.append(MovingAveragePostProcessor(N=self.spin_smoothen.value()))
+        self.active_segmentation.postprocessor = p
 
     def spin_smoothen_changed(self, value):
-        if self.toggle_smoothen.isChecked():
-            self.revalidate.emit()
+        self.update_posprocessor()
 
-    def __init__(self, app, *args, **kwargs):
-        super(PostTraceToolbar, self).__init__(*args, **kwargs)
+    def __init__(self, parent, *args, **kwargs):
+        super(PostProcessorToolbar, self).__init__(parent, *args, **kwargs)
 
         self.toggle_detrend = self.addAction("Detrend")
         self.toggle_detrend.setToolTip("Apply linear detrend on all traces bevore plotting.")
         self.toggle_detrend.setCheckable(True)
-        self.toggle_detrend.triggered.connect(self.revalidate.emit)
+        self.toggle_detrend.triggered.connect(self.update_posprocessor)
 
         self.toggle_smoothen = self.addAction("Smoothen")
         tooltip = "Apply moving average filter with N frames on all traces bevore plotting. \n" + \
@@ -245,11 +253,12 @@ class PostTraceToolbar(QtGui.QToolBar):
         self.toggle_smoothen.setToolTip(tooltip)
 
         self.toggle_smoothen.setCheckable(True)
-        self.toggle_smoothen.triggered.connect(self.revalidate.emit)
+        self.toggle_smoothen.triggered.connect(self.update_posprocessor)
 
         self.spin_smoothen = QtGui.QSpinBox(value=3)
 
         self.spin_smoothen.setMinimum(2)
         self.spin_smoothen.setToolTip("Choose the number of frames for the moving average.")
         self.spin_smoothen.valueChanged.connect(self.spin_smoothen_changed)
+        self.setToolTip("If both postprocessors are active, detrend will be applied first.")
         self.addWidget(self.spin_smoothen)

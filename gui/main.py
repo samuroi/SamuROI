@@ -155,31 +155,9 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
         # self.toolbar_tracehold.holdChanged.connect(self.toggle_hold)
         # self.addToolBar(self.toolbar_tracehold)
         #
-        # from .toolbars import PostTraceToolbar
-        # self.toolbar_postprocess = PostTraceToolbar(app=self)
-        # self.toolbar_postprocess.revalidate.connect(self.toggle_filter)
-        # self.addToolBar(self.toolbar_postprocess)
-
-    def post_apply(self, trace):
-        """
-        This is a callback function for the rois. It gets called after trace generation and is responsible for all
-        post processing of traces.
-        Args:
-            trace: The raw trace of the roi
-        Returns:
-            trace: A postprocessed trace of the roi
-
-        """
-
-        import numpy
-        import scipy.signal
-        if self.toolbar_postprocess.toggle_detrend.isChecked():
-            if not numpy.isinf(trace).any() and not numpy.isnan(trace).any():
-                trace = scipy.signal.detrend(trace)
-        if self.toolbar_postprocess.toggle_smoothen.isChecked():
-            N = self.toolbar_postprocess.spin_smoothen.value()
-            trace = numpy.convolve(trace, numpy.ones(shape=N), mode='same') / N
-        return trace
+        from .toolbars import PostProcessorToolbar
+        self.toolbar_postprocess = PostProcessorToolbar(parent=self)
+        self.addToolBar(self.toolbar_postprocess)
 
     def toggle_filter(self):
         with self.disable_draw():
