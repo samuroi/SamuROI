@@ -2,6 +2,7 @@ from PyQt4 import QtCore
 
 from PyQt4.QtCore import QVariant, QObject, pyqtSignal
 
+
 class TreeItem(object):
     def __init__(self, masks):
         super(TreeItem, self).__init__()
@@ -188,6 +189,9 @@ class RoiItem(TreeItem, QObject):
         return self.__parent
 
     def __repr__(self):
+        if hasattr(self.mask, "events"):
+            if len(self.mask.events.indices) > 0:
+                return self.mask.name + "*"
         return self.mask.name
 
 
