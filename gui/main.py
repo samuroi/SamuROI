@@ -108,36 +108,6 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
             self.linescandockwidget.set_branch(branches.pop())
 
     def _setup_toolbars(self):
-        # # self.toolbar_navigation = self.fig.canvas.manager.toolbar
-        # from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT
-        #
-        # class CanvasProxy(object):
-        #     def __init__(self, parent):
-        #         self.parent = parent
-        #
-        #     def __get__(self, instance, owner):
-        #         print "getter"
-        #         return self.parent.frame_widget.frame_canvas
-        #
-        #     def __set__(self, obj, value):
-        #         pass
-        #
-        #     def __del__(self, obj):
-        #         pass
-        #
-        # class FOO(NavigationToolbar2QT):
-        #     canvas = CanvasProxy(self)
-        #
-        #     def __init__(self, parent):
-        #         super(FOO, self).__init__(None, parent)
-        #
-        # self.toolbar_navigation = FOO(self)
-        # self.addToolBar(self.toolbar_navigation)
-
-        from .toolbars import NavigationToolbar
-        self.toolbar_branch = NavigationToolbar(parent=self)
-        self.addToolBar(self.toolbar_branch)
-
         from .toolbars import MaskToolbar
         self.toolbar_mask = MaskToolbar(parent=self)
         self.addToolBar(self.toolbar_mask)
@@ -149,12 +119,7 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
         from .toolbars import ManageRoiToolbar
         self.toolbar_createroi = ManageRoiToolbar(parent=self)
         self.addToolBar(self.toolbar_createroi)
-        #
-        # from .toolbars import TraceHoldToolbar
-        # self.toolbar_tracehold = TraceHoldToolbar(app=self)
-        # self.toolbar_tracehold.holdChanged.connect(self.toggle_hold)
-        # self.addToolBar(self.toolbar_tracehold)
-        #
+
         from .toolbars import PostProcessorToolbar
         self.toolbar_postprocess = PostProcessorToolbar(parent=self)
         self.addToolBar(self.toolbar_postprocess)

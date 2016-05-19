@@ -91,31 +91,31 @@ class SplitJoinToolbar(ToolBar):
         self.btn_merge_segment_right.setEnabled(False)
         # self.btn_merge_segment_right.triggered.connect(lambda: self.app.join_segments(next=True))
 
-
-class NavigationToolbar(ToolBar):
-    def __init__(self, parent, *args, **kwargs):
-        super(NavigationToolbar, self).__init__(parent=parent, *args, **kwargs)
-
-        self.index = 0
-        """The index of the rois that is currently selected"""
-
-        self.btn_prev_roi = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSkipBackward), "<<")
-        # self.btn_prev_roi.triggered.connect(self.active_segmentation.mask_cycle.prev)
-        self.btn_prev_roi.setToolTip("Select next roi.")
-
-        self.btn_prev_seg = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSeekBackward), "<")
-        # self.btn_prev_seg.triggered.connect(self.app.previous_segment)
-        self.btn_prev_seg.setEnabled(False)
-        self.btn_prev_seg.setToolTip("Select next segment.")
-
-        self.btn_next_seg = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSeekForward), ">")
-        self.btn_next_seg.setEnabled(False)
-        # self.btn_next_seg.triggered.connect(self.app.next_segment)
-        self.btn_next_seg.setToolTip("Select previous segment.")
-
-        self.btn_next_roi = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSkipForward), ">>")
-        # self.btn_next_roi.triggered.connect(self.active_segmentation.mask_cycle.next)
-        self.btn_next_roi.setToolTip("Select previous roi.")
+#
+# class NavigationToolbar(ToolBar):
+#     def __init__(self, parent, *args, **kwargs):
+#         super(NavigationToolbar, self).__init__(parent=parent, *args, **kwargs)
+#
+#         self.index = 0
+#         """The index of the rois that is currently selected"""
+#
+#         self.btn_prev_roi = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSkipBackward), "<<")
+#         # self.btn_prev_roi.triggered.connect(self.active_segmentation.mask_cycle.prev)
+#         self.btn_prev_roi.setToolTip("Select next roi.")
+#
+#         self.btn_prev_seg = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSeekBackward), "<")
+#         # self.btn_prev_seg.triggered.connect(self.app.previous_segment)
+#         self.btn_prev_seg.setEnabled(False)
+#         self.btn_prev_seg.setToolTip("Select next segment.")
+#
+#         self.btn_next_seg = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSeekForward), ">")
+#         self.btn_next_seg.setEnabled(False)
+#         # self.btn_next_seg.triggered.connect(self.app.next_segment)
+#         self.btn_next_seg.setToolTip("Select previous segment.")
+#
+#         self.btn_next_roi = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSkipForward), ">>")
+#         # self.btn_next_roi.triggered.connect(self.active_segmentation.mask_cycle.next)
+#         self.btn_next_roi.setToolTip("Select previous roi.")
 
 
 class ManageRoiToolbar(ToolBar):
@@ -199,32 +199,7 @@ class ManageRoiToolbar(ToolBar):
         self.remove_mask.triggered.connect(self.remove_roi)
 
 
-class TraceHoldToolbar(QtGui.QToolBar):
-    # This defines a signal called 'closed' that takes no arguments.
-    holdChanged = QtCore.pyqtSignal(int)
-
-    def proxy(self, num):
-        def fun():
-            self.holdChanged.emit(num)
-
-        return fun
-
-    def __init__(self, app, *args, **kwargs):
-        super(TraceHoldToolbar, self).__init__(*args, **kwargs)
-
-        tooltip = "Keep the trace of the currently selected segment in one of the hold axes."
-        self.holdbuttons = []
-        for i in range(3):
-            action = self.addAction("H" + str(i))
-            action.setToolTip(tooltip)
-            action.setCheckable(True)
-            action.setEnabled(False)
-            action.triggered.connect(self.proxy(i))
-            self.holdbuttons.append(action)
-
-
 from ..util.postprocessors import *
-
 
 class PostProcessorToolbar(ToolBar):
     def update_posprocessor(self):
