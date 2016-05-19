@@ -43,10 +43,15 @@ class MaskToolbar(ToolBar):
 
 
 class SplitJoinToolbar(ToolBar):
-    def split_single(self):
-        raise NotImplementedError()
-        # if self.app.active_branch is not None:
-        #     self.app.split_branch(length=self.split_length_widget.value(), branch=self.app.active_branch)
+    def split_selected(self):
+        from ..masks.branch import BranchMask
+        with self.parent().draw_on_exit():
+            for sr in self.parent().roiselectionmodel.selection():
+                for index in sr.indexes():
+                    item = index.internalPointer()
+                    if hasattr(item, "mask"):
+                        if type(item.mask) is BranchMask:
+                            item.mask.split(length=self.split_length_widget.value())
 
     def split_all(self):
         with self.parent().draw_on_exit():
@@ -56,10 +61,10 @@ class SplitJoinToolbar(ToolBar):
     def __init__(self, parent, *args, **kwargs):
         super(SplitJoinToolbar, self).__init__(parent=parent, *args, **kwargs)
 
-        self.btn_split_single = self.addAction("split\nbranch")
-        self.btn_split_single.setToolTip("Split selected branch.")
-        self.btn_split_single.setEnabled(False)
-        # self.btn_split_single.triggered.connect(self.split_single)
+        self.btn_split_single = self.addAction("split\nselection")
+        self.btn_split_single.setToolTip("Split selecteded branches.")
+        self.btn_split_single.setEnabled(True)
+        self.btn_split_single.triggered.connect(self.split_selected)
 
         self.btn_split_single = self.addAction("split\nall")
         self.btn_split_single.setToolTip("Split all branches.")

@@ -64,6 +64,7 @@ class LineScanCanvas(CanvasBase):
             # remove the old linescan image
             if self.imglinescan is not None:
                 self.imglinescan.remove()
+                self.imglinescan = None
             if self.scatterevents is not None:
                 self.scatterevents.remove()
                 self.scatterevents = None
