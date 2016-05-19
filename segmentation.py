@@ -1,35 +1,12 @@
 import numpy
 import skimage
-import matplotlib
-import itertools
-
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-
-from contextlib import contextmanager
 
 import skimage.filters
 import skimage.morphology
 
-from dumb.util import noraise
-
-from dumb.util import bicyclelist
-
 from .maskset import MaskSet
-# from .artists.roi import Roi
-# from .artists.pixelroi import PixelRoi
-# from .artists.polyroi import PolygonRoi
-# from .artists.branchroi import BranchRoi
-# from .artists.circleroi import CircleRoi
-
 from .util.event import Event
 
-
-# TODO change roi bicyclelist to builtin set type
-# TODO give rois an id property which can be used as hashable for the set
-# TODO create treeview widget for roi list overview
-# TODO status bar which denotes the roi which is active (number and type)
-# TODO untangle roi data/view functionality
 
 class Segmentation(object):
     def __init__(self, data, mean=None):
