@@ -99,10 +99,12 @@ class FindEventsMenu(QtGui.QMenu):
             segmentation:
         """
 
+        segmentation = self.parent().segmentation
+
         # loop over all masks
-        for mask in self.parent().segmentation.masks:
+        for mask in segmentation.masks:
             # run the algorithm on the trace of the mask
-            trace = mask(self.parent().segmentation.data, self.parent().segmentation.overlay)
+            trace = segmentation.postprocessor(mask(segmentation.data, segmentation.overlay))
 
             result = algorithm(trace)
 
