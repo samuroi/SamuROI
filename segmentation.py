@@ -165,42 +165,48 @@ class Segmentation(object):
 
         if pixels:
             f.create_group('pixels')
-            for i, m in enumerate(self.pixelmasks):
+            for m in self.pixelmasks:
+                i = m.name
                 f.create_dataset('pixels/' + str(i) + '/roi', data=m.pixels)
                 if traces:
                     f.create_dataset('pixels/' + str(i) + '/trace', data=m(self.data, self.overlay))
 
         if freehands:
             f.create_group('freehands')
-            for i, m in enumerate(self.polymasks):
+            for m in self.polymasks:
+                i = m.name
                 f.create_dataset('freehands/' + str(i) + '/roi', data=m.outline)
                 if traces:
                     f.create_dataset('freehands/' + str(i) + '/trace', data=m(self.data, self.overlay))
 
         if circles:
             f.create_group('circles')
-            for i, m in enumerate(self.circlemasks):
+            for m in self.circlemasks:
+                i = m.name
                 data = [m.center[0], m.center[1], m.radius]
                 f.create_dataset('circles/' + str(i) + '/roi', data=data)
                 if traces:
                     f.create_dataset('circles/' + str(i) + '/trace', data=m(self.data, self.overlay))
 
         if branches:
-            for i, b in enumerate(self.branchmasks):
+            for b in self.branchmasks:
+                i = b.name
                 f.create_group('branches/{}'.format(i))
-                # f.create_dataset('branches/{}/roi'.format(i), data=b.branch)
+                f.create_dataset('branches/{}/roi'.format(i), data=b.data)
                 f.create_dataset('branches/{}/outline'.format(i), data=b.outline)
                 if traces:
                     f.create_dataset('branches/{}/trace'.format(i), data=b(self.data, self.overlay))
                 if len(b.children) > 0:
-                    f.create_dataset('branches/{}/linescan'.format(i), data=b.linescan(self.data,self.overlay))
+                    f.create_dataset('branches/{}/linescan'.format(i), data=b.linescan(self.data, self.overlay))
                 f.create_group('branches/{}/segments'.format(i))
-                for j, s in enumerate(b.children):
+                for s in b.children:
+                    j = s.name
                     f.create_group('branches/{}/segments/{}'.format(i, j))
-                    # f.create_dataset('branches/{}/segments/{}/roi'.format(i, j), data=s.branch)
+                    f.create_dataset('branches/{}/segments/{}/roi'.format(i, j), data=s.data)
                     f.create_dataset('branches/{}/segments/{}/outline'.format(i, j), data=s.outline)
                     if traces:
-                        f.create_dataset('branches/{}/segments/{}/trace'.format(i, j), data=s(self.data, self.overlay))
+                        f.create_dataset('branches/{}/segments/{}/trace'.format(i, j),
+                                         data=self.postprocessor(s(self.data, self.overlay)))
         # write stuff to disc
         f.close()
 
@@ -238,9 +244,9 @@ class Segmentation(object):
                 if 'overlay' not in f:
                     raise Exception("Overlay data not stored in given hd5 file.")
                 self.threshold = f['overlay'].attrs['threshold']
-                if (self.mask != f['overlay']).any():
+                if (self.overlay != f['overlay']).any():
                     print "Warning: overlay threshold does not match with stored binary mask!"
-                self.mask = f['overlay'].value
+                self.overlay = f['overlay'].value
 
             if data:
                 if 'data' not in f:
@@ -251,13 +257,17 @@ class Segmentation(object):
                 if 'pixels' not in f:
                     raise Exception("pixels not stored in given hd5 file.")
                 for i, p in f['pixels'].items():
-                    self.masks.add(PixelMask(p['roi'].value))
+                    m = PixelMask(p['roi'].value)
+                    m.name = i
+                    self.masks.add(m)
 
             if freehands:
                 if 'freehands' not in f:
                     raise Exception("freehands not stored in given hd5 file.")
                 for i, p in f['freehands'].items():
-                    self.masks.add(PolygonMask(p['roi'].value))
+                    m = PolygonMask(p['roi'].value)
+                    m.name = i
+                    self.masks.add(m)
 
             if circles:
                 if 'circles' not in f:
@@ -265,12 +275,19 @@ class Segmentation(object):
                 for i, p in f['circles'].items():
                     center = p['roi'].value[0:2]
                     radius = p['roi'].value[2]
-                    self.masks.add(CircleMask(center=center, radius=radius))
+                    m = CircleMask(center=center, radius=radius)
+                    m.name = i
+                    self.masks.add(m)
 
             if branches:
-                from dumb.util.swc import Branch
                 if 'branches' not in f:
                     raise Exception("branches not stored in given hd5 file.")
                 for i, p in f['branches'].items():
-                    d = p['roi'].value
-                    self.masks.add(BranchMask(x=d['x'], y=d['y'], z=d['z'], r=d['radius']))
+                    data = p['roi'].value
+                    branch = BranchMask(data=data)
+                    branch.name = i
+                    for j, s in f['branches/{}/segments'.format(i)].items():
+                        child = BranchMask(data=s['roi'].value)
+                        child.name = j
+                        branch.children.append(child)
+                    self.masks.add(branch)

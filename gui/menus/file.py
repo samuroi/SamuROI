@@ -36,7 +36,7 @@ class FileMenu(QtGui.QMenu):
             filename = str(dialog.selectedFiles()[0])
             if '.' not in filename:
                 filename = filename + '.h5'
-            self.app.load_hdf5(filename = filename,
+            self.app.segmentation.load_hdf5(filename = filename,
                                branches  = dialog.chk_branches.isChecked(),
                                pixels    = dialog.chk_pixel.isChecked(),
                                freehands = dialog.chk_freehand.isChecked(),
