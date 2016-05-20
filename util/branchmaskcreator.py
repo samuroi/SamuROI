@@ -68,7 +68,10 @@ class BranchMaskCreator(MaskCreator):
             self.artist.remove()
             self.artist = None
         elif len(self.x) == 1:
-            self.artist.set_radius(self.r[0])
+            self.artist.remove()
+            self.artist = Circle([self.x[0], self.y[0]], radius=self.r[0], fill=False,
+                                 lw=2, color='red')
+            self.axes.add_artist(self.artist)
         # change from circle to polygon if more than 1 points are available
         elif len(self.x) == 2:
             self.artist.remove()
