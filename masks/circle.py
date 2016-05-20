@@ -1,20 +1,20 @@
 from .mask import Mask
 
-
 class CircleMask(Mask):
     def __init__(self, center, radius):
         super(CircleMask,self).__init__()
-        # use private variables and properties because masks should be either immutable or use changed signal.
-        self.__center = center
-        self.__radius = radius
 
         import numpy
+        # use private variables and properties because masks should be either immutable or use changed signal.
+        self.__center = numpy.array(center)
+        self.__radius = radius
+
         angle = numpy.linspace(0, 2 * numpy.pi, 100)
         x = self.radius * numpy.cos(angle) + self.center[0]
         y = self.radius * numpy.sin(angle) + self.center[1]
         corners = numpy.column_stack((x, y))
         from .polygon import PolygonMask
-        self.__polygon = PolygonMask(corners=corners)
+        self.__polygon = PolygonMask(outline=corners)
 
     @property
     def center(self):

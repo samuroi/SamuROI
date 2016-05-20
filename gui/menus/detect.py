@@ -124,7 +124,7 @@ class FindEventsMenu(QtGui.QMenu):
         for index in self.parent().roiselectionmodel.selectedIndexes():
             item = index.internalPointer()
             # check if the selection is a parent mask
-            if hasattr(item, "mask"):
+            if item.mask is not None:
                 print(item.mask)
                 plt.figure()
                 plt.plot(item.mask.events.crit)

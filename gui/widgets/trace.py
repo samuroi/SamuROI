@@ -58,7 +58,7 @@ class TraceCanvas(CanvasBase):
             for index in range.indexes():
                 item = index.internalPointer()
                 # the selection could also be a whole tree of e.g. BranchMasks
-                if hasattr(item, "mask") and item.mask in self.__artist:
+                if item.mask is not None and item.mask in self.__artist:
                     # remove the artist
                     for artist in self.__artist[item.mask]:
                         artist.remove()
@@ -70,7 +70,7 @@ class TraceCanvas(CanvasBase):
         for range in selected:
             for index in range.indexes():
                 item = index.internalPointer()
-                if hasattr(item, "mask") and item.mask not in self.__artist:
+                if item.mask is not None and item.mask not in self.__artist:
                     artists = []
                     if not hasattr(item.mask, "color"):
                         item.mask.color = cycol()

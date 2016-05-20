@@ -22,7 +22,7 @@ class BranchMask(Branch, Mask):
         """Child masks aka segments of the branch."""
 
         from .polygon import PolygonMask
-        self.__polygon = PolygonMask(corners=self.outline)
+        self.__polygon = PolygonMask(outline=self.outline)
 
         self.changed = Event()
 

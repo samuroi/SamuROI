@@ -106,9 +106,13 @@ class BranchMaskCreator(MaskCreator):
                 self.update()
                 self.artist = None
                 if len(self.x) == 1:
-                    mask = CircleMask(center=[self.x[0], self.y[0]], radius=self.r[0])
+                    # shift by 0.5 to compensate for pixel offset in imshow
+                    mask = CircleMask(center=[self.x[0] + 0.5, self.y[0] + 0.5], radius=self.r[0])
                 else:
-                    mask = BranchMask(x=self.x, y=self.y, z=[0 for i in self.x], r=self.r)
+                    import numpy
+                    # shift by 0.5 to compensate for pixel offset in imshow
+                    mask = BranchMask(x=numpy.array(self.x) + 0.5, y=numpy.array(self.y) + 0.5,
+                                      z=[0 for i in self.x], r=self.r)
                 self.x, self.y, self.r = [], [], []
                 self.notify(mask)
                 self.enabled = False

@@ -9,7 +9,7 @@ class SegmentMask(Branch, Mask):
         self.parent = parent
 
         from .polygon import PolygonMask
-        self.__polygon = PolygonMask(corners=self.outline)
+        self.__polygon = PolygonMask(outline=self.outline)
 
     def __call__(self, data, mask):
         return self.__polygon(data, mask)

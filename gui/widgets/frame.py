@@ -78,13 +78,13 @@ class FrameCanvas(CanvasBase):
             for index in range.indexes():
                 item = index.internalPointer()
                 # the selection could also be a whole tree of e.g. BranchMasks
-                if hasattr(item, "mask"):
+                if item.mask is not None:
                     artist = self.__artists[item.mask]
                     artist.set_selected(False)
         for range in selected:
             for index in range.indexes():
                 item = index.internalPointer()
-                if hasattr(item, "mask"):
+                if item.mask is not None:
                     artist = self.__artists[item.mask]
                     artist.set_selected(True)
         self.draw()
@@ -93,13 +93,13 @@ class FrameCanvas(CanvasBase):
         raise NotImplementedError()
 
     def create_outlined_artist(self, mask, color, **kwargs):
-        artist = matplotlib.patches.Polygon(xy=mask.outline + 0.5, lw=1, picker=True, fill=False, color='gray',
+        artist = matplotlib.patches.Polygon(xy=mask.outline - 0.5, lw=1, picker=True, fill=False, color='gray',
                                             **kwargs)
 
         artist.color = color
         artist.mask = mask
 
-        #todo: make the branches children a polygonCollection for better performance
+        # todo: make the branches children a polygonCollection for better performance
 
         def set_selected(self, a):
             if a is True:
@@ -114,7 +114,7 @@ class FrameCanvas(CanvasBase):
         self.axes.add_artist(artist)
 
     def create_circle_artist(self, mask, color, **kwargs):
-        artist = matplotlib.patches.Circle(radius=mask.radius, xy=mask.center, lw=1, picker=True, fill=False,
+        artist = matplotlib.patches.Circle(radius=mask.radius, xy=mask.center - 0.5, lw=1, picker=True, fill=False,
                                            color='gray', **kwargs)
 
         artist.color = color
@@ -171,26 +171,33 @@ class FrameCanvas(CanvasBase):
         self.draw()
 
     def remove_mask(self, mask):
-        artist = self.__artists[mask]
-        artist.remove()
-        del self.__artists[mask]
-        self.draw()
+        with self.draw_on_exit():
+            # recurse into children and remove them first
+            for child in getattr(mask, "children", []):
+                self.remove_mask(child)
+
+            artist = self.__artists[mask]
+            artist.remove()
+            del self.__artists[mask]
+            if hasattr(mask, "changed"):
+                mask.changed.remove(self.on_mask_changed)
 
     def on_mask_changed(self, modified_mask):
         # remove all children,
-        # todo: because the children are already removed when this function is called,
+        # note: because the children are already removed when this function is called,
         #       we need to get the children to be removed from our own container...
-        to_be_removed = []
-        for mask, artist in self.__artists.iteritems():
-            # check if the mask has parent and the parent is the mask which was modified
-            if hasattr(mask, "parent") and mask.parent is modified_mask:
-                to_be_removed.append(mask)
-        for mask in to_be_removed:
-            self.__artists[mask].remove()
-            del self.__artists[mask]
-        for child in getattr(modified_mask, "children", []):
-            self.add_mask(child)
-        self.draw()
+        with self.draw_on_exit():
+            # gather all former children of the changed mask in a list
+            old_children = []
+            for mask, artist in self.__artists.iteritems():
+                # check if the mask has parent and the parent is the mask which was modified
+                if hasattr(mask, "parent") and mask.parent is modified_mask:
+                    old_children.append(mask)
+            # remove all former children
+            for mask in old_children:
+                self.remove_mask(mask)
+            for child in getattr(modified_mask, "children", []):
+                self.add_mask(child)
 
     @property
     def show_overlay(self):
@@ -217,14 +224,14 @@ class FrameCanvas(CanvasBase):
             mask = event.artist.mask
             # get the model underlying the selection
             model = self.selectionmodel.model()
-            # get the model tree item for the mask
-            treeitem = model.mask2roitreeitem[mask]
+
+            # get the model index for the mask
+            index = model.find(mask)
 
             # if shift key is not pressed clear selection
             if not (event.guiEvent.modifiers() and QtCore.Qt.ShiftModifier):
                 self.selectionmodel.clear()
-            self.selectionmodel.select(model.createIndex(treeitem.parent().row(treeitem), 0, treeitem),
-                                       QtGui.QItemSelectionModel.Select)
+            self.selectionmodel.select(index, QtGui.QItemSelectionModel.Select)
 
 
 class FrameWidget(QtGui.QWidget):

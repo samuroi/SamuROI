@@ -49,9 +49,8 @@ class SplitJoinToolbar(ToolBar):
             for sr in self.parent().roiselectionmodel.selection():
                 for index in sr.indexes():
                     item = index.internalPointer()
-                    if hasattr(item, "mask"):
-                        if type(item.mask) is BranchMask:
-                            item.mask.split(length=self.split_length_widget.value())
+                    if type(item.mask) is BranchMask:
+                        item.mask.split(length=self.split_length_widget.value())
 
     def split_all(self):
         with self.parent().draw_on_exit():
@@ -144,7 +143,7 @@ class ManageRoiToolbar(ToolBar):
         for index in self.parent().roiselectionmodel.selectedIndexes():
             item = index.internalPointer()
             # check if the selection is a parent mask
-            if hasattr(item, "mask") and not hasattr(item.mask, "parent"):
+            if item.mask is not None and not hasattr(item.mask, "parent"):
                 self.active_segmentation.masks.remove(item.mask)
 
     def __init__(self, parent, *args, **kwargs):

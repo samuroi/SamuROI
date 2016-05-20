@@ -55,9 +55,11 @@ class PolyMaskCreator(MaskCreator):
         self.status.y.append(self.status.y[0])
         self.status.line.set_data(self.status.x, self.status.y)
         self.status.line.remove()
+
+        # shift everything by 0.5 because pixels will be centered around 0
         import numpy
-        corners = numpy.column_stack([self.status.x, self.status.y])
+        corners = numpy.column_stack([self.status.x, self.status.y]) + 0.5
         self.update()
         self.status = None
         # set status to none before notify, because notify might disable the creator
-        self.notify(PolygonMask(corners=corners))
+        self.notify(PolygonMask(outline=corners))

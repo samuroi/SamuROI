@@ -99,9 +99,9 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
         branches = set()
         for index in self.roiselectionmodel.selectedIndexes():
             item = index.internalPointer()
-            if hasattr(item, "mask") and type(item.mask) is BranchMask:
+            if item.mask is not None and type(item.mask) is BranchMask:
                 branches.add(item.mask)
-            elif hasattr(item, "mask") and type(item.mask) is SegmentMask:
+            elif item.mask is not None and type(item.mask) is SegmentMask:
                 branches.add(item.mask.parent)
 
         if len(branches) == 1:

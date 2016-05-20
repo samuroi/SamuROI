@@ -8,28 +8,27 @@ class PolygonMask(Mask):
     A mask that is defined by the corners of a polygon
     """
 
-    def __init__(self, corners):
+    def __init__(self, outline):
         super(PolygonMask,self).__init__()
-        # TODO maybe get rid of either corners or outline
-        self.corners = corners
+        self.__outline = outline
 
     @property
     def outline(self):
-        return self.corners
+        return self.__outline
 
     @property
     def lowerleft(self):
-        return numpy.min(self.corners, axis=0).astype(int)
+        return numpy.min(self.outline, axis=0).astype(int)
 
     @property
     def upperright(self):
-        return numpy.max(self.corners, axis=0).astype(int) + 1
+        return numpy.max(self.outline, axis=0).astype(int) + 1
 
     @property
     def weights(self):
         """Generate the weight mask of the rectangular area covering the given polygon."""
         # shift the polygon such that ll is the new origin
-        spoly = self.corners - self.lowerleft
+        spoly = self.outline - self.lowerleft
 
         # width and height of roi
         W, H = (self.upperright - self.lowerleft)
