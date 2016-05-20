@@ -6,7 +6,7 @@ class CircleMask(Mask):
 
         import numpy
         # use private variables and properties because masks should be either immutable or use changed signal.
-        self.__center = numpy.array(center)
+        self.__center = numpy.array([center[0],center[1]])
         self.__radius = radius
 
         angle = numpy.linspace(0, 2 * numpy.pi, 100)
