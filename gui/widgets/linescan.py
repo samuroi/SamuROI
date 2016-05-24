@@ -110,7 +110,8 @@ class LineScanCanvas(CanvasBase):
         data = self.segmentation.data
         overlay = self.segmentation.overlay
         postprocessor = self.segmentation.postprocessor
-        self.__linescans[self.branch] = numpy.row_stack((postprocessor(child(data, overlay)) for child in self.branch.children))
+        self.__linescans[self.branch] = numpy.row_stack(
+            (postprocessor(child(data, overlay)) for child in self.branch.children))
         return self.__linescans[self.branch]
 
     def onclick(self, event):
@@ -119,13 +120,10 @@ class LineScanCanvas(CanvasBase):
             if index < len(self.branch.children):
                 # get the model underlying the selection
                 model = self.selectionmodel.model()
-                # get the model tree item for the selected segment
-                treeitem = model.mask2roitreeitem[self.branch.children[index]]
 
                 # clear selection and add the segment
                 self.selectionmodel.clear()
-                self.selectionmodel.select(model.createIndex(treeitem.parent().row(treeitem), 0, treeitem),
-                                           QtGui.QItemSelectionModel.Select)
+                self.selectionmodel.select(model.find(self.branch.children[index]), QtGui.QItemSelectionModel.Select)
         if event.xdata is not None:
             self.segmentation.active_frame = event.xdata
 
