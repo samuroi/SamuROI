@@ -74,7 +74,7 @@ class TraceCanvas(CanvasBase):
                     artists = []
                     if not hasattr(item.mask, "color"):
                         item.mask.color = cycol()
-                    tracedata = item.mask(self.segmentation.data, self.segmentation.overlay)
+                    tracedata = self.segmentation.postprocessor(item.mask(self.segmentation.data, self.segmentation.overlay))
                     line, = self.axes.plot(tracedata, color=item.mask.color)
                     self.__traces[item.mask] = line
                     # put a handle of the mask on the artist
