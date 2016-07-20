@@ -168,7 +168,10 @@ class FrameCanvas(CanvasBase):
         func(mask=mask, color=mask.color)
         if hasattr(mask, "changed"):
             mask.changed.append(self.on_mask_changed)
-        self.draw()
+
+        with self.draw_on_exit():
+            for child in getattr(mask,"children",[]):
+                self.add_mask(child)
 
     def remove_mask(self, mask):
         with self.draw_on_exit():
