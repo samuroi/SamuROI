@@ -52,7 +52,7 @@ class FrameCanvas(CanvasBase):
         # disable autoscale on image axes, to avoid rescaling due to additional artists.
         self.axes.set_autoscale_on(False)
 
-        self.figure.colorbar(self.frameimg, ax=self.axes)
+        self.colorbar = self.figure.colorbar(self.frameimg, ax=self.axes)
         self.figure.set_tight_layout(True)
 
         self.segmentation.masks.added.append(self.add_mask)
@@ -90,7 +90,19 @@ class FrameCanvas(CanvasBase):
         self.draw()
 
     def on_data_changed(self):
-        raise NotImplementedError()
+        pmin, pmax = 10, 99
+        vmin, vmax = numpy.percentile(self.segmentation.meandata.flatten(), q=[pmin, pmax])
+        self.meanimg.set_clim(vmin=vmin, vmax=vmax)
+        self.meanimg.set_data(self.segmentation.meandata)
+
+        # norm = matplotlib.colors.LogNorm(.001,1.)
+        x, y, t = self.segmentation.data.shape
+        vmin, vmax = numpy.nanpercentile(self.segmentation.data[..., :min(t / 10, 50)], q=[pmin, pmax])
+        norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax, clip=True)
+
+        self.frameimg.set_norm(norm)
+        self.frameimg.set_data(self.segmentation.data[..., self.segmentation.active_frame])
+        self.draw()
 
     def create_outlined_artist(self, mask, color, **kwargs):
         artist = matplotlib.patches.Polygon(xy=mask.outline - 0.5, lw=1, picker=True, fill=False, color='gray',
@@ -170,7 +182,7 @@ class FrameCanvas(CanvasBase):
             mask.changed.append(self.on_mask_changed)
 
         with self.draw_on_exit():
-            for child in getattr(mask,"children",[]):
+            for child in getattr(mask, "children", []):
                 self.add_mask(child)
 
     def remove_mask(self, mask):

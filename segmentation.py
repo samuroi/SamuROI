@@ -18,8 +18,15 @@ class Segmentation(object):
         self.postprocessor_changed = Event()
 
         self.postprocessor = self.no_postprocessor
+
+
+        self.meandata = None
+        """The meandata will be fixed if given upon construction. Otherwise it will be updated automatically to match the value scale of the data."""
+        self._meaninput = mean
+
+        # call the property setter which will initialize meandata
         self.data = data
-        self.meandata = numpy.mean(data, axis=-1) if mean is None else mean
+
         self.threshold = numpy.percentile(self.meandata.flatten(), q=90)
 
     @property
@@ -65,6 +72,7 @@ class Segmentation(object):
     @data.setter
     def data(self, d):
         self.__data = d
+        self.meandata = numpy.mean(d, axis=-1) if self._meaninput is None else self._meaninput
         self.data_changed()
 
     @property
