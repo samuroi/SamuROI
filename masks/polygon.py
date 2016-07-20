@@ -8,8 +8,8 @@ class PolygonMask(Mask):
     A mask that is defined by the corners of a polygon
     """
 
-    def __init__(self, outline):
-        super(PolygonMask,self).__init__()
+    def __init__(self, outline, name=None):
+        super(PolygonMask, self).__init__(name=name)
         self.__outline = outline
 
     @property
@@ -23,6 +23,17 @@ class PolygonMask(Mask):
     @property
     def upperright(self):
         return numpy.max(self.outline, axis=0).astype(int) + 1
+
+    def to_hdf5(self, f):
+        if 'polygons' not in f:
+            f.create_group('polygons')
+        f.create_dataset('polygons/' + self.name, data=self.outline)
+
+    @staticmethod
+    def from_hdf5(f):
+        if 'polygons' in f:
+            for name, dataset in f['polygons'].iteritems():
+                yield PolygonMask(name=name, outline=dataset.value)
 
     @property
     def weights(self):

@@ -114,41 +114,15 @@ class Segmentation(object):
         self.__postprocessor = pp
         self.postprocessor_changed()
 
-    def save_hdf5(self, filename, mask=True, pixels=True, branches=True, circles=True, freehands=True, data=False,
+    def save_hdf5(self, filename, mask=True, pixels=True, branches=True, circles=True, polygons=True, data=False,
                   traces=True):
         """
         Create a hdf5 file holding the overlay mask, the rois and the traces of the current setup.
         The structure of the hdf5 file will be as follows:
             - mask (dataset, optional, binary mask defined by threshold value, threshold is stored as attribute)
             - data (dataset, optional, the full 3D dataset from which the traces were generated)
-            - branches (group holding subgroups for each branch)
-                - 0 (group for an individual branch)
-                    - roi (dataset, definition of the branch, (x,y,z,r) tuples)
-                    - trace (dataset, trace of branch)
-                    - linescan (dataset. combined traces of all children of the branch, only present if branch is segmented)
-                    - outline (dataset, Nx2)
-                    - segments (group holding segment subgroups)
-                        - 0 (group for an individual segment)
-                            - roi (dataset, definition of the segment, (x,y,z,r) tuples)
-                            - trace (dataset, trace of segment)
-                            - outline (dataset. Nx2)
-                        - ... (more segments)
-                - ... (more branches)
-            - circles (group holding subgroups for each circle roi)
-                - 0 (group for individual roi)
-                    - roi (dataset, (x,y,r))
-                    - trace (dataset)
-                - ... (more circles)
-            - freehands
-                - 0 (group for individual roi)
-                    - roi (dataset, the outline of the polygon, Nx2)
-                    - trace (dataset)
-                - ... (more polygons)
-            - pixels
-                - 0 (group for individual roi)
-                    - roi (dataset, the pixel coordinates, shape: 2xN)
-                    - trace (dataset)
-                - ... (more pixels)
+            - branches/circles... (groups holding different kinds of datasets for masks)
+            - traces (group that holds a hierachy for the traces.)
         Args:
             filename: filename to use, suffix ".h5" will be added if missing.
             mask: flag whether mask should be stored in file. default = True
@@ -160,53 +134,39 @@ class Segmentation(object):
         if mask:
             f.create_dataset('overlay', data=self.overlay)
             f['overlay'].attrs['threshold'] = self.threshold
+
         if data:
             f.create_dataset('data', data=self.data)
 
         if pixels:
-            f.create_group('pixels')
             for m in self.pixelmasks:
-                i = m.name
-                f.create_dataset('pixels/' + str(i) + '/roi', data=m.pixels)
-                if traces:
-                    f.create_dataset('pixels/' + str(i) + '/trace', data=m(self.data, self.overlay))
+                m.to_hdf5(f)
 
-        if freehands:
-            f.create_group('freehands')
+        if polygons:
             for m in self.polymasks:
-                i = m.name
-                f.create_dataset('freehands/' + str(i) + '/roi', data=m.outline)
-                if traces:
-                    f.create_dataset('freehands/' + str(i) + '/trace', data=m(self.data, self.overlay))
+                m.to_hdf5(f)
 
         if circles:
-            f.create_group('circles')
             for m in self.circlemasks:
-                i = m.name
-                data = [m.center[0], m.center[1], m.radius]
-                f.create_dataset('circles/' + str(i) + '/roi', data=data)
-                if traces:
-                    f.create_dataset('circles/' + str(i) + '/trace', data=m(self.data, self.overlay))
+                m.to_hdf5(f)
 
         if branches:
-            for b in self.branchmasks:
-                i = b.name
-                f.create_group('branches/{}'.format(i))
-                f.create_dataset('branches/{}/roi'.format(i), data=b.data)
-                f.create_dataset('branches/{}/outline'.format(i), data=b.outline)
-                if traces:
-                    f.create_dataset('branches/{}/trace'.format(i), data=b(self.data, self.overlay))
-                if len(b.children) > 0:
-                    f.create_dataset('branches/{}/linescan'.format(i), data=b.linescan(self.data, self.overlay))
-                f.create_group('branches/{}/segments'.format(i))
-                for s in b.children:
-                    j = s.name
-                    f.create_group('branches/{}/segments/{}'.format(i, j))
-                    f.create_dataset('branches/{}/segments/{}/roi'.format(i, j), data=s.data)
-                    f.create_dataset('branches/{}/segments/{}/outline'.format(i, j), data=s.outline)
-                    if traces:
-                        f.create_dataset('branches/{}/segments/{}/trace'.format(i, j),
-                                         data=self.postprocessor(s(self.data, self.overlay)))
+            for m in self.branchmasks:
+                m.to_hdf5(f)
+
+        if traces:
+            f.create_group('traces')
+            for m in self.masks:
+                trace = self.postprocessor(m(self.data, self.overlay))
+                if hasattr(m, "children"):
+                    if 'traces/' + m.name not in f:
+                        f.create_group('traces/' + m.name)
+                    f.create_dataset('traces/' + m.name + '/trace', data=trace)
+                else:
+                    f.create_dataset('traces/' + m.name, data=trace)
+            for m in self.branchmasks:
+                if len(m.children) > 0:
+                    f.create_dataset('traces/' + m.name + '/linescan', data=m.linescan(self.data, self.overlay))
         # write stuff to disc
         f.close()
 
@@ -221,18 +181,7 @@ class Segmentation(object):
                 mask = CircleMask(center=b[['x', 'y']][0], radius=b['radius'][0])
             self.masks.add(mask)
 
-    def load_hdf5(self, filename, mask=True, pixels=True, branches=True, circles=True, freehands=True, data=True):
-        """
-
-        Args:
-            filename:
-            mask:
-            branches:
-            circles:
-
-        Returns:
-
-        """
+    def load_hdf5(self, filename, mask=True, pixels=True, branches=True, circles=True, polygons=True, data=True):
         from .masks.pixel import PixelMask
         from .masks.branch import BranchMask
         from .masks.circle import CircleMask
@@ -254,40 +203,17 @@ class Segmentation(object):
                 self.data = f['data'].value
 
             if pixels:
-                if 'pixels' not in f:
-                    raise Exception("pixels not stored in given hd5 file.")
-                for i, p in f['pixels'].items():
-                    m = PixelMask(p['roi'].value)
-                    m.name = i
+                for m in PixelMask.from_hdf5(f):
                     self.masks.add(m)
 
-            if freehands:
-                if 'freehands' not in f:
-                    raise Exception("freehands not stored in given hd5 file.")
-                for i, p in f['freehands'].items():
-                    m = PolygonMask(p['roi'].value)
-                    m.name = i
+            if polygons:
+                for m in PolygonMask.from_hdf5(f):
                     self.masks.add(m)
 
             if circles:
-                if 'circles' not in f:
-                    raise Exception("circles not stored in given hd5 file.")
-                for i, p in f['circles'].items():
-                    center = p['roi'].value[0:2]
-                    radius = p['roi'].value[2]
-                    m = CircleMask(center=center, radius=radius)
-                    m.name = i
+                for m in CircleMask.from_hdf5(f):
                     self.masks.add(m)
 
             if branches:
-                if 'branches' not in f:
-                    raise Exception("branches not stored in given hd5 file.")
-                for i, p in f['branches'].items():
-                    data = p['roi'].value
-                    branch = BranchMask(data=data)
-                    branch.name = i
-                    for j, s in f['branches/{}/segments'.format(i)].items():
-                        child = BranchMask(data=s['roi'].value)
-                        child.name = j
-                        branch.children.append(child)
-                    self.masks.add(branch)
+                for m in BranchMask.from_hdf5(f):
+                    self.masks.add(m)

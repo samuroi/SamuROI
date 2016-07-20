@@ -14,9 +14,10 @@ class BranchMask(Branch, Mask):
     Provide functionality for splitting, joining and iterating over segments.
     """
 
-    def __init__(self, data=None, x=None, y=None, z=None, r=None):
+    def __init__(self, data=None, x=None, y=None, z=None, r=None, name=None):
         """Can be constructed as Branch(kind,x,y,z,r) or Branch(swc[start:end])."""
-        super(BranchMask, self).__init__(data, x, y, z, r)
+        Mask.__init__(self, name=name)
+        Branch.__init__(self, data, x, y, z, r)
 
         self.segments = []
         """Child masks aka segments of the branch."""
@@ -32,6 +33,34 @@ class BranchMask(Branch, Mask):
 
     def __call__(self, data, mask):
         return self.__polygon(data, mask)
+
+    def to_hdf5(self, f):
+        if 'branches' not in f:
+            f.create_group('branches')
+        f.create_group('branches/' + self.name)
+        f.create_dataset('branches/' + self.name + '/data', data=self.data)
+        f.create_dataset('branches/' + self.name + '/outline', data=self.outline)
+
+        if len(self.children) > 0:
+            f.create_group('branches/' + self.name + '/segments')
+            for s in self.children:
+                f.create_group('branches/{}/segments/{}'.format(self.name, s.name))
+                f.create_dataset('branches/{}/segments/{}/data'.format(self.name, s.name), data=s.data)
+                f.create_dataset('branches/{}/segments/{}/outline'.format(self.name, s.name), data=s.outline)
+
+    @staticmethod
+    def from_hdf5(f):
+        from .polygon import PolygonMask
+        if 'branches' in f:
+            for name in f['branches'].keys():
+                data = f['branches/' + name + '/data'].value
+                branch = BranchMask(name=name, data=data)
+                if 'segments' in f['branches/' + name]:
+                    for childname in f['branches/' + name + '/segments'].keys():
+                        child = PolygonMask(name=childname,
+                                            outline=f['branches/' + name + '/segments/' + childname + '/outline'].value)
+                        branch.children.append(child)
+                yield branch
 
     def split(self, nsegments=2, length=None, k=1, s=0):
         branches = Branch.split(self, nsegments=nsegments, length=length, k=k, s=s)

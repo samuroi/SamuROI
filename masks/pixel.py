@@ -2,8 +2,8 @@ from .mask import Mask
 
 
 class PixelMask(Mask):
-    def __init__(self, xy=None, x=None, y=None):
-        super(PixelMask, self).__init__()
+    def __init__(self, name=None, xy=None, x=None, y=None):
+        super(PixelMask, self).__init__(name=name)
         # use private variables and properties because masks should be either immutable or use changed signal.
         if xy is None:
             self.__x = x
@@ -18,6 +18,18 @@ class PixelMask(Mask):
     @property
     def y(self):
         return self.__y
+
+    def to_hdf5(self, f):
+        import numpy
+        if 'pixels' not in f:
+            f.create_group('pixels')
+        f.create_dataset('pixels/' + self.name, data=numpy.column_stack((self.__x, self.__y)))
+
+    @staticmethod
+    def from_hdf5(f):
+        if 'pixels' in f:
+            for name, dataset in f['pixels'].iteritems():
+                yield PixelMask(name=name, x=dataset.value[:, 0], y=dataset.value[:, 1])
 
     def __call__(self, data, mask):
         # get a view on the data for own pixels. shape N x T where N is number of pixels

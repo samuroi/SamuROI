@@ -2,9 +2,10 @@ from PyQt4 import QtGui
 
 from epo.gui.h5dialogs import H5LoadDialog, H5SaveDialog
 
+
 class FileMenu(QtGui.QMenu):
-    def __init__(self, app, *args,**kwargs):
-        super(FileMenu,self).__init__(*args,**kwargs)
+    def __init__(self, app, *args, **kwargs):
+        super(FileMenu, self).__init__(*args, **kwargs)
 
         self.app = app
         self.load_h5_action = QtGui.QAction('Load &hdf5 ...', None)
@@ -27,33 +28,32 @@ class FileMenu(QtGui.QMenu):
         self.addSeparator()
         self.addAction(self.save_hdf5_action)
 
-
     def load_hdf5(self):
-        dialog = H5LoadDialog(caption = "Open hdf5 file...")
+        dialog = H5LoadDialog(caption="Open hdf5 file...")
         if dialog.exec_():
             print dialog.selectedFiles()[0]
 
             filename = str(dialog.selectedFiles()[0])
             if '.' not in filename:
                 filename = filename + '.h5'
-            self.app.segmentation.load_hdf5(filename = filename,
-                               branches  = dialog.chk_branches.isChecked(),
-                               pixels    = dialog.chk_pixel.isChecked(),
-                               freehands = dialog.chk_freehand.isChecked(),
-                               circles   = dialog.chk_circles.isChecked(),
-                               data      = dialog.chk_data.isChecked(),
-                               mask      = dialog.chk_mask.isChecked())
+            self.app.segmentation.load_hdf5(filename=filename,
+                                            branches=dialog.chk_branches.isChecked(),
+                                            pixels=dialog.chk_pixel.isChecked(),
+                                            polygons=dialog.chk_freehand.isChecked(),
+                                            circles=dialog.chk_circles.isChecked(),
+                                            data=dialog.chk_data.isChecked(),
+                                            mask=dialog.chk_mask.isChecked())
         else:
             print "cancel"
 
     def load_swc(self):
         fileName = QtGui.QFileDialog.getOpenFileName(app2.fig.canvas.manager.window,
                                                      "Open SWC File", ".", "SWC Files (*.swc)",
-                                                    QtGui.QFileDialog.ExistingFile)
+                                                     QtGui.QFileDialog.ExistingFile)
         print str(fileName)
 
     def load_tiff(self):
-        dialog = QtGui.QFileDialog(caption = "Open tiff file...", directory = ".")
+        dialog = QtGui.QFileDialog(caption="Open tiff file...", directory=".")
         dialog.setAcceptMode(QtGui.QFileDialog.AcceptOpen)
         dialog.setFileMode(QtGui.QFileDialog.ExistingFile)
         dialog.setNameFilter("Tiff Files (*.tif *.tiff)")
@@ -63,7 +63,7 @@ class FileMenu(QtGui.QMenu):
             print "cancel"
 
     def save_hdf5(self):
-        dialog = H5SaveDialog(caption = "Save hdf5 file...")
+        dialog = H5SaveDialog(caption="Save hdf5 file...")
 
         if dialog.exec_():
             print dialog.selectedFiles()[0]
@@ -71,13 +71,13 @@ class FileMenu(QtGui.QMenu):
             filename = str(dialog.selectedFiles()[0])
             if '.' not in filename:
                 filename = filename + '.h5'
-            self.app.segmentation.save_hdf5(filename  = filename,
-                          branches  = dialog.chk_branches.isChecked(),
-                          pixels    = dialog.chk_pixel.isChecked(),
-                          freehands = dialog.chk_freehand.isChecked(),
-                          circles   = dialog.chk_circles.isChecked(),
-                          data      = dialog.chk_data.isChecked(),
-                          traces    = dialog.chk_traces.isChecked(),
-                          mask      = dialog.chk_mask.isChecked())
+            self.app.segmentation.save_hdf5(filename=filename,
+                                            branches=dialog.chk_branches.isChecked(),
+                                            pixels=dialog.chk_pixel.isChecked(),
+                                            polygons=dialog.chk_freehand.isChecked(),
+                                            circles=dialog.chk_circles.isChecked(),
+                                            data=dialog.chk_data.isChecked(),
+                                            traces=dialog.chk_traces.isChecked(),
+                                            mask=dialog.chk_mask.isChecked())
         else:
             print "cancel"
