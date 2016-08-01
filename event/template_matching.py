@@ -3,6 +3,7 @@ import numpy
 
 def template_matching(data, kernel, threshold):
     """
+    threshold values ususall should be in the range 1-5 for reasonable results.
     Input $\mathbf{y}$ and $\mathbf{e}$ are two vectors, the normalized(todo: what means normalized?) template that should be used for matching and the data vector. Some intermediate values are:
 
     $$\overline{e} = \frac{1}{K}\sum_k e_k $$
@@ -20,19 +21,22 @@ def template_matching(data, kernel, threshold):
     and
     $$C_n = \overline{y_n} -S_n \overline{e}$$
 
+
     returns a named tuple:
-        indices : the indices of detected events
-        sse: the vector of squared errors used for comparison with the threshold
+        indices : the indices of detected events, since we use zero padding for convolution, all indices need to get shifted by N/2 where N is the length of the kernel
+        crit: the criterion vector  used for comparison with the threshold
         s: the vector of optimal scaling parameters
         c: the vector of optimal offset parameters
         threshold: the threshold used for detection
+        kernel: the kernel that was used for matching
 
     [1] http://dx.doi.org/10.1016%2FS0006-3495(97)78062-7
     """
 
     # use shortcuts as in formulas above
     y = data
-    e = kernel
+    # reverse kernel, since we use convolve
+    e = kernel[::-1]
 
     # the size of the template
     N = len(e)
@@ -47,8 +51,7 @@ def template_matching(data, kernel, threshold):
     sum_y = numpy.convolve(y, numpy.ones_like(e), mode='same')
 
     # the sum over blocks of y*y (vector of size N)
-    sum_yy = numpy.convolve(y ** 2, numpy.ones_like(e), mode='same'
-                            )
+    sum_yy = numpy.convolve(y ** 2, numpy.ones_like(e), mode='same')
     # the sum_k  e_k y_{n+k}
     sum_ey = numpy.convolve(y, e, mode='same')
 
@@ -66,9 +69,9 @@ def template_matching(data, kernel, threshold):
 
     from collections import namedtuple
 
-    result = namedtuple("ClementsBekkersResult", ['indices', 'crit', 's', 'c', 'threshold'])
+    result = namedtuple("ClementsBekkersResult", ['indices', 'crit', 's', 'c', 'threshold', 'kernel'])
 
-    return result(indices=numpy.where(crit > threshold)[0], crit=crit, s=s_n, c=c_n, threshold=threshold)
+    return result(indices=numpy.where(crit > threshold)[0], crit=crit, s=s_n, c=c_n, threshold=threshold, kernel=kernel)
 
     # def least_squares(data, wavelet):
     #     """
