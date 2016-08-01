@@ -84,10 +84,9 @@ class LineScanCanvas(CanvasBase):
                 colors = []
                 for i, child in enumerate(self.branch.children):
                     if hasattr(child, "events"):
-                        indices = child.events.indices
                         if not hasattr(child, "color"):
                             child.color = cycol()
-                        eventsx.append(child.events.indices)
+                        eventsx.append(child.events.indices - len(child.events.kernel)/2)
                         eventsy.append(numpy.ones_like(child.events.indices) * (i + 0.5))
                         colors += [child.color for i in child.events.indices]
                 if len(colors) > 0:
