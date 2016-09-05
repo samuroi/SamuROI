@@ -37,4 +37,4 @@ class PixelMask(Mask):
         # get a view on the mask for own pixels. shape N x 1 for broadcasting
         mask_p = mask[self.__y, self.__x].reshape(-1, 1)
 
-        return (data_p * mask_p).sum(axis=0)
+        return (data_p * mask_p).mean(axis=0)
