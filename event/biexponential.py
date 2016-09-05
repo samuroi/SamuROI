@@ -43,6 +43,7 @@ class BiExponentialParameters(object):
     def kernel(self, x=None):
         """ Create a kernel for the given parameters.
         x may be a numpy array to be used as support.
+        tau1 is slow, tau2 is fast. i.e. tau1 >= tau2
         If x is None, the support is chosen automatically such that the difference of the
         last value of the kernel and the baseline is less than 1%."""
 
