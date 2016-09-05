@@ -7,14 +7,19 @@ from .canvasbase import CanvasBase
 
 
 class LineScanCanvas(CanvasBase):
-    """Class to represent the FigureCanvas widget"""
+    """
+    This widget shows a bunch of child traced from one given parent mask as a color coded "linescan".
+    The y axis of the resulting plot resembles the index of the child in the list of children of the parent mask.
+    In case of branch mask, where the index of the segments directly reflects the position of the child in the branch,
+    this yields a nice "spatial" y axis :-).
+    """
 
     def __init__(self, segmentation, selectionmodel):
         # initialize the canvas where the Figure renders into
         super(LineScanCanvas, self).__init__()
         self.segmentation = segmentation
         self.selectionmodel = selectionmodel
-        self.branch = None
+        self.parent_mask = None
         self.imglinescan = None
         self.scatterevents = None
         self.axes = self.figure.add_subplot(111)
@@ -40,24 +45,25 @@ class LineScanCanvas(CanvasBase):
     def on_overlay_change(self):
         self.__linescans.clear()
         # force update
-        if self.branch is not None:
+        if self.parent_mask is not None:
             self.redraw()
 
     def on_data_change(self):
         self.__linescans.clear()
         # force update
-        if self.branch is not None:
+        if self.parent_mask is not None:
             self.redraw()
 
-    def set_branch(self, branch):
-        if self.branch is branch:
+    def set_mask(self, branch):
+        if self.parent_mask is branch:
             return
         # disconnect from the old branch
-        if self.branch is not None:
-            self.branch.changed.remove(self.on_branch_change)
+        if self.parent_mask is not None and hasattr(self.parent_mask, "changed"):
+            self.parent_mask.changed.remove(self.on_mask_change)
 
-        self.branch = branch
-        self.branch.changed.append(self.on_branch_change)
+        self.parent_mask = branch
+        if hasattr(self.parent_mask, "changed"):
+            self.parent_mask.changed.append(self.on_mask_change)
         self.redraw()
 
     def redraw(self):
@@ -70,9 +76,9 @@ class LineScanCanvas(CanvasBase):
                 self.scatterevents.remove()
                 self.scatterevents = None
 
-            if len(self.branch.children) > 0:
+            if len(self.parent_mask.children) > 0:
                 tmax = self.segmentation.data.shape[-1]
-                nsegments = len(self.branch.children)
+                nsegments = len(self.parent_mask.children)
                 self.imglinescan = self.axes.imshow(self.linescan, interpolation='nearest', aspect='auto',
                                                     cmap='viridis', extent=(0, tmax, nsegments, 0))
                 self.axes.set_ylim(nsegments, 0)
@@ -82,11 +88,11 @@ class LineScanCanvas(CanvasBase):
                 eventsx = []
                 eventsy = []
                 colors = []
-                for i, child in enumerate(self.branch.children):
+                for i, child in enumerate(self.parent_mask.children):
                     if hasattr(child, "events"):
                         if not hasattr(child, "color"):
                             child.color = cycol()
-                        eventsx.append(child.events.indices - len(child.events.kernel)/2)
+                        eventsx.append(child.events.indices - len(child.events.kernel) / 2)
                         eventsy.append(numpy.ones_like(child.events.indices) * (i + 0.5))
                         colors += [child.color for i in child.events.indices]
                 if len(colors) > 0:
@@ -94,8 +100,8 @@ class LineScanCanvas(CanvasBase):
                                                            numpy.concatenate(eventsy),
                                                            color=colors)
 
-    def on_branch_change(self, branch):
-        """Will be called when the branch masks number of children change."""
+    def on_mask_change(self, branch):
+        """Will be called when the parent masks number of children changes."""
         self.redraw()
 
     @property
@@ -103,26 +109,27 @@ class LineScanCanvas(CanvasBase):
         """
         Calculate the trace for all children and return a 2D array aka linescan for that branch roi.
         """
-        if self.branch in self.__linescans:
-            return self.__linescans[self.branch]
+        if self.parent_mask in self.__linescans:
+            return self.__linescans[self.parent_mask]
         import numpy
         data = self.segmentation.data
         overlay = self.segmentation.overlay
         postprocessor = self.segmentation.postprocessor
-        self.__linescans[self.branch] = numpy.row_stack(
-            (postprocessor(child(data, overlay)) for child in self.branch.children))
-        return self.__linescans[self.branch]
+        self.__linescans[self.parent_mask] = numpy.row_stack(
+            (postprocessor(child(data, overlay)) for child in self.parent_mask.children))
+        return self.__linescans[self.parent_mask]
 
     def onclick(self, event):
-        if self.branch is not None and event.ydata is not None:
+        if self.parent_mask is not None and event.ydata is not None:
             index = int(event.ydata)
-            if index < len(self.branch.children):
+            if index < len(self.parent_mask.children):
                 # get the model underlying the selection
                 model = self.selectionmodel.model()
 
                 # clear selection and add the segment
                 self.selectionmodel.clear()
-                self.selectionmodel.select(model.find(self.branch.children[index]), QtGui.QItemSelectionModel.Select)
+                self.selectionmodel.select(model.find(self.parent_mask.children[index]),
+                                           QtGui.QItemSelectionModel.Select)
         if event.xdata is not None:
             self.segmentation.active_frame = event.xdata
 
@@ -147,5 +154,5 @@ class LineScanDockWidget(QtGui.QDockWidget):
         self.widget.setLayout(self.layout)
         self.setWidget(self.widget)
 
-    def set_branch(self, branch):
-        self.linescanwidget.set_branch(branch)
+    def set_mask(self, branch):
+        self.linescanwidget.set_mask(branch)

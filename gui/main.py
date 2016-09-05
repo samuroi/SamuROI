@@ -91,21 +91,23 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
 
     def on_selection_change(self, selected, deselected):
         """
-        When the selection is either a single branch, or a set of segments from only one branch,
+        When the selection is either a single mask with children, or a set of child masks from only one parent mask,
         then update the linescan widget.
         """
         from ..masks.branch import BranchMask
         from ..masks.segment import SegmentMask
-        branches = set()
+        from ..masks.segmentation import Segmentation as SegmentationMask
+        masks = set()
         for index in self.roiselectionmodel.selectedIndexes():
             item = index.internalPointer()
-            if item.mask is not None and type(item.mask) is BranchMask:
-                branches.add(item.mask)
-            elif item.mask is not None and type(item.mask) is SegmentMask:
-                branches.add(item.mask.parent)
+            if item.mask is not None:
+                if type(item.mask) in (BranchMask, SegmentationMask):
+                    masks.add(item.mask)
+                elif type(item.mask) in (SegmentMask, SegmentationMask.Child):
+                    masks.add(item.mask.parent)
 
-        if len(branches) == 1:
-            self.linescandockwidget.set_branch(branches.pop())
+        if len(masks) == 1:
+            self.linescandockwidget.set_mask(masks.pop())
 
     def _setup_toolbars(self):
         from .toolbars import MaskToolbar
