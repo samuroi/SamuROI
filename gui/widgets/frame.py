@@ -30,7 +30,7 @@ class FrameCanvas(CanvasBase):
         # a map, mapping from mask to artist
         self.__artists = {}
         from itertools import cycle
-        self.colorcycle = cycle('bgrcmk')
+        self.colorcycle = cycle('bgrcm')
 
         pmin, pmax = 10, 99
         vmin, vmax = numpy.percentile(self.segmentation.meandata.flatten(), q=[pmin, pmax])
@@ -125,6 +125,31 @@ class FrameCanvas(CanvasBase):
         self.__artists[mask] = artist
         self.axes.add_artist(artist)
 
+        self.create_outlined_child_artits(parent=mask)
+
+    def create_outlined_child_artits(self, parent):
+        """Create outlined artists for all children of given mask"""
+        with self.draw_on_exit():
+            for child in getattr(parent, "children", []):
+                if not hasattr(child, "color"):
+                    child.color = self.colorcycle.next()
+                self.create_outlined_artist(mask=child, color=child.color)
+
+    def remove_child_artists(self, parent):
+        """Remove all child artists of given mask."""
+        # note: because the children are already removed when this function is called,
+        #       we need to get the children to be removed from our own container...
+        with self.draw_on_exit():
+            # gather all former children of the changed mask in a list
+            old_children = []
+            for mask, artist in self.__artists.iteritems():
+                # check if the mask has parent and the parent is the mask which was modified
+                if hasattr(mask, "parent") and mask.parent is parent:
+                    old_children.append(mask)
+            # remove all former children
+            for mask in old_children:
+                self.remove_mask(mask)
+
     def create_circle_artist(self, mask, color, **kwargs):
         artist = matplotlib.patches.Circle(radius=mask.radius, xy=mask.center - 0.5, lw=1, picker=True, fill=False,
                                            color='gray', **kwargs)
@@ -160,6 +185,52 @@ class FrameCanvas(CanvasBase):
 
         artist.set_selected = types.MethodType(set_selected, artist)
         self.__artists[mask] = artist
+        return artist
+
+    def create_segmentation_artist(self, mask, color=None):
+        segmentation_alpha = 0.3
+
+        conv = matplotlib.colors.ColorConverter()
+        overlay = numpy.zeros(shape=mask.data.shape + (4,), dtype=float)
+        # set color for all children
+        for child in mask.children:
+            if not hasattr(child, "color"):
+                child.color = self.colorcycle.next()
+            overlay[child.y, child.x] = conv.to_rgba(child.color)
+
+        # set background pixels to opaque and foreground pixels to low alpha
+        overlay[..., 3] = numpy.logical_not(mask.data == 0) * segmentation_alpha
+
+        artist = self.axes.imshow(overlay, interpolation='nearest')
+        artist.mask = mask
+
+        def set_selected(self, a):
+            overlay[..., 3] = numpy.logical_not(mask.data == 0) * (0.5 if a else segmentation_alpha)
+            artist.set_array(overlay)
+
+        artist.set_selected = types.MethodType(set_selected, artist)
+        self.__artists[mask] = artist
+
+        class ArtistProxy(object):
+            """prox object for regions of segmentation. Redirect set_selected and remove to the overlay artist."""
+
+            def __init__(self, mask):
+                self.artist = artist
+                self.mask = mask
+
+            def remove(self):
+                # do nothing, we cannot remove single parts from segmentation yet
+                pass
+
+            def set_selected(self, a):
+                if a:
+                    overlay[self.mask.y,self.mask.x, 3] = .5
+                else:
+                    overlay[self.mask.y, self.mask.x, 3] = segmentation_alpha
+                self.artist.set_array(overlay)
+
+        for child in mask.children:
+            self.__artists[child] = ArtistProxy(mask=child)
 
     def on_overlay_changed(self):
         self.overlayimg.set_data(self.rgba_overlay)
@@ -167,12 +238,13 @@ class FrameCanvas(CanvasBase):
 
     def add_mask(self, mask):
         # create an artist based on the type of roi
+        from epo.masks.segmentation import Segmentation
         mapping = {
             CircleMask: self.create_circle_artist,
             BranchMask: self.create_outlined_artist,
-            SegmentMask: self.create_outlined_artist,
             PolygonMask: self.create_outlined_artist,
-            PixelMask: self.create_pixel_artist
+            PixelMask: self.create_pixel_artist,
+            Segmentation: self.create_segmentation_artist
         }
         func = mapping[type(mask)]
         if not hasattr(mask, "color"):
@@ -180,10 +252,6 @@ class FrameCanvas(CanvasBase):
         func(mask=mask, color=mask.color)
         if hasattr(mask, "changed"):
             mask.changed.append(self.on_mask_changed)
-
-        with self.draw_on_exit():
-            for child in getattr(mask, "children", []):
-                self.add_mask(child)
 
     def remove_mask(self, mask):
         with self.draw_on_exit():
@@ -198,21 +266,12 @@ class FrameCanvas(CanvasBase):
                 mask.changed.remove(self.on_mask_changed)
 
     def on_mask_changed(self, modified_mask):
-        # remove all children,
-        # note: because the children are already removed when this function is called,
-        #       we need to get the children to be removed from our own container...
         with self.draw_on_exit():
-            # gather all former children of the changed mask in a list
-            old_children = []
-            for mask, artist in self.__artists.iteritems():
-                # check if the mask has parent and the parent is the mask which was modified
-                if hasattr(mask, "parent") and mask.parent is modified_mask:
-                    old_children.append(mask)
-            # remove all former children
-            for mask in old_children:
-                self.remove_mask(mask)
-            for child in getattr(modified_mask, "children", []):
-                self.add_mask(child)
+            # remove all child artists
+            self.remove_child_artists(parent=modified_mask)
+            # redraw potential new child artists
+            if type(modified_mask) is BranchMask:
+                self.create_outlined_child_artits(modified_mask)
 
     @property
     def show_overlay(self):
