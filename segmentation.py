@@ -29,6 +29,21 @@ class Segmentation(object):
 
         self.threshold = numpy.percentile(self.meandata.flatten(), q=90)
 
+        # todo: the active frame is merely a utility to synchronize widgets. maybe it should go to the gui...
+        self.active_frame_changed = Event()
+        self.active_frame = 0
+
+    @property
+    def active_frame(self):
+        return self.__active_frame
+
+    @active_frame.setter
+    def active_frame(self, f):
+        if not 0 <= f < self.data.shape[2]:
+            raise Exception("Frame needs to be in range [0,{}[".format(self.data.shape[2]))
+        self.__active_frame = int(f)
+        self.active_frame_changed()
+
     @property
     def pixelmasks(self):
         from .masks.pixel import PixelMask

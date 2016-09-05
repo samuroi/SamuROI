@@ -3,7 +3,7 @@ from contextlib import contextmanager
 import numpy
 from PyQt4 import QtCore, QtGui
 
-from ..segmentationderived import SegmentationExtension
+from ..segmentation import Segmentation
 
 
 class DendriteSegmentationTool(QtGui.QMainWindow):
@@ -37,7 +37,7 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
         """
         QtGui.QMainWindow.__init__(self)
 
-        self.segmentation = SegmentationExtension(data, mean)
+        self.segmentation = Segmentation(data, mean)
 
         # set window title
         self.setWindowTitle("DendriteSegmentationTool")
