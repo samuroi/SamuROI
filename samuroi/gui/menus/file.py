@@ -1,6 +1,6 @@
 from PyQt4 import QtGui
 
-from epo.gui.h5dialogs import H5LoadDialog, H5SaveDialog
+from samuroi.gui.h5dialogs import H5LoadDialog, H5SaveDialog
 
 
 class FileMenu(QtGui.QMenu):

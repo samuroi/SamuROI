@@ -77,9 +77,9 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
         self.roitreedockwidget.setWidget(self.roitreewidget)
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.roitreedockwidget)
 
-        from epo.gui.menus.file import FileMenu
-        from epo.gui.menus.view import ViewMenu
-        from epo.gui.menus.detect import FindEventsMenu
+        from samuroi.gui.menus.file import FileMenu
+        from samuroi.gui.menus.view import ViewMenu
+        from samuroi.gui.menus.detect import FindEventsMenu
         self.menubar = self.menuBar()
         self.file_menu = FileMenu(app=self)
         self.menubar.addMenu(self.file_menu)

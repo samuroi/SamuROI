@@ -238,7 +238,7 @@ class FrameCanvas(CanvasBase):
 
     def add_mask(self, mask):
         # create an artist based on the type of roi
-        from epo.masks.segmentation import Segmentation
+        from samuroi.masks.segmentation import Segmentation
         mapping = {
             CircleMask: self.create_circle_artist,
             BranchMask: self.create_outlined_artist,
