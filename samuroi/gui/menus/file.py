@@ -47,20 +47,22 @@ class FileMenu(QtGui.QMenu):
             print "cancel"
 
     def load_swc(self):
-        fileName = QtGui.QFileDialog.getOpenFileName(app2.fig.canvas.manager.window,
-                                                     "Open SWC File", ".", "SWC Files (*.swc)",
-                                                     QtGui.QFileDialog.ExistingFile)
-        print str(fileName)
+        fileName = QtGui.QFileDialog.getOpenFileName(self.parent(),
+                                                     "Open SWC File",
+                                                     ".",
+                                                     "SWC Files (*.swc)")
+        from samuroi.plugins.swc import load_swc
+        swc = load_swc(str(fileName))
+        self.app.segmentation.load_swc(swc)
 
     def load_tiff(self):
-        dialog = QtGui.QFileDialog(caption="Open tiff file...", directory=".")
-        dialog.setAcceptMode(QtGui.QFileDialog.AcceptOpen)
-        dialog.setFileMode(QtGui.QFileDialog.ExistingFile)
-        dialog.setNameFilter("Tiff Files (*.tif *.tiff)")
-        if dialog.exec_():
-            print dialog.selectedFiles()[0]
-        else:
-            print "cancel"
+        fileName = QtGui.QFileDialog.getOpenFileName(self.parent(),
+                                                     "Open TIF File",
+                                                     ".",
+                                                     "TIF Files (*.tif *.tiff)")
+        from samuroi.plugins.tif import load_tif
+        data = load_tif(str(fileName))
+        self.app.segmentation.data = data
 
     def save_hdf5(self):
         dialog = H5SaveDialog(caption="Save hdf5 file...")

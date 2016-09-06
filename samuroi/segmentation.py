@@ -4,12 +4,13 @@ import skimage
 import skimage.filters
 import skimage.morphology
 
+from cached_property import cached_property
 from .maskset import MaskSet
 from .util.event import Event
 
 
 class Segmentation(object):
-    def __init__(self, data, mean=None):
+    def __init__(self, data):
         self.masks = MaskSet()
         """ A joined set of all rois. Allows for easy cycling through all rois. use app.rois.remove(roi) and app.rois.add(roi). To keep this set in a consistent state with the other sets."""
 
@@ -19,15 +20,8 @@ class Segmentation(object):
 
         self.postprocessor = self.no_postprocessor
 
-
-        self.meandata = None
-        """The meandata will be fixed if given upon construction. Otherwise it will be updated automatically to match the value scale of the data."""
-        self._meaninput = mean
-
-        # call the property setter which will initialize meandata
+        # call the property setter which will initialize the mean data and threshold value
         self.data = data
-
-        self.threshold = numpy.percentile(self.meandata.flatten(), q=90)
 
         # todo: the active frame is merely a utility to synchronize widgets. maybe it should go to the gui...
         self.active_frame_changed = Event()
@@ -87,8 +81,17 @@ class Segmentation(object):
     @data.setter
     def data(self, d):
         self.__data = d
-        self.meandata = numpy.mean(d, axis=-1) if self._meaninput is None else self._meaninput
+        # clear meandata cache
+        if hasattr(self, "meandata"):
+            del self.meandata
+
+        # choose some appropriate new threshold value
+        self.threshold = numpy.percentile(self.meandata.flatten(), q=90)
         self.data_changed()
+
+    @cached_property
+    def meandata(self):
+        return numpy.mean(self.data, axis=-1)
 
     @property
     def overlay(self):

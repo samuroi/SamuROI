@@ -25,7 +25,7 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
         with self.frame_widget.canvas.draw_on_exit(), self.tracedockwidget.canvas.draw_on_exit(), self.linescandockwidget.canvas.draw_on_exit():
             yield
 
-    def __init__(self, data, mean=None, pmin=10, pmax=99):
+    def __init__(self, data):
         """
         Create and show the gui for data analysis.
         Args:
@@ -37,7 +37,7 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
         """
         QtGui.QMainWindow.__init__(self)
 
-        self.segmentation = Segmentation(data, mean)
+        self.segmentation = Segmentation(data)
 
         # set window title
         self.setWindowTitle("DendriteSegmentationTool")

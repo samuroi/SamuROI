@@ -20,7 +20,7 @@ segmentation[40:70,40:70] = 40
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
     # show the gui for the filtered data
-    mainwindow = DendriteSegmentationTool(data=data, mean=data[..., 0])
+    mainwindow = DendriteSegmentationTool(data=data)
 
     mainwindow.segmentation.load_swc(swc)
     from samuroi.masks.segmentation import Segmentation as SegmentationMask
