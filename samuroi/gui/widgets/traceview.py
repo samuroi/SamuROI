@@ -1,18 +1,16 @@
 import numpy
 
-import matplotlib
-
 from PyQt4 import QtCore, QtGui
 
 from .canvasbase import CanvasBase
 
 
-class TraceCanvas(CanvasBase):
+class TraceViewCanvas(CanvasBase):
     """Plot a set of traces for a selection defined by a QtSelectionModel"""
 
     def __init__(self, segmentation, selectionmodel):
         # initialize the canvas where the Figure renders into
-        super(TraceCanvas, self).__init__()
+        super(TraceViewCanvas, self).__init__()
 
         self.segmentation = segmentation
         self.selectionmodel = selectionmodel
@@ -100,22 +98,22 @@ class TraceCanvas(CanvasBase):
             self.segmentation.active_frame = event.xdata
 
 
-class TraceDockWidget(QtGui.QDockWidget):
+class TraceViewDockWidget(QtGui.QDockWidget):
     def __init__(self, name, parent, segmentation, selectionmodel):
-        super(TraceDockWidget, self).__init__(name, parent)
+        super(TraceViewDockWidget, self).__init__(name, parent)
 
-        self.tracewidget = TraceCanvas(segmentation=segmentation, selectionmodel=selectionmodel)
+        self.canvas = TraceViewCanvas(segmentation=segmentation, selectionmodel=selectionmodel)
 
         from PyQt4 import QtCore
         from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT
-        self.toolbar_navigation = NavigationToolbar2QT(self.tracewidget, self, coordinates=False)
+        self.toolbar_navigation = NavigationToolbar2QT(self.canvas, self, coordinates=False)
         self.toolbar_navigation.setOrientation(QtCore.Qt.Vertical)
         self.toolbar_navigation.setFloatable(True)
 
         self.widget = QtGui.QWidget()
         self.layout = QtGui.QHBoxLayout()
         self.layout.addWidget(self.toolbar_navigation)
-        self.layout.addWidget(self.tracewidget)
+        self.layout.addWidget(self.canvas)
 
         self.widget.setLayout(self.layout)
         self.setWidget(self.widget)

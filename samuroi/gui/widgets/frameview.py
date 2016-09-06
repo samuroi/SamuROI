@@ -16,12 +16,12 @@ from ...masks.pixel import PixelMask
 from matplotlib.patches import Polygon
 
 
-class FrameCanvas(CanvasBase):
+class FrameViewCanvas(CanvasBase):
     """Plot the actual 2D frame of data with all mask artists and the overlay"""
 
     def __init__(self, segmentation, selectionmodel):
         # initialize the canvas where the Figure renders into
-        super(FrameCanvas, self).__init__()
+        super(FrameViewCanvas, self).__init__()
 
         self.segmentation = segmentation
         self.selectionmodel = selectionmodel
@@ -308,20 +308,20 @@ class FrameCanvas(CanvasBase):
             self.selectionmodel.select(index, QtGui.QItemSelectionModel.Select)
 
 
-class FrameWidget(QtGui.QWidget):
+class FrameViewWidget(QtGui.QWidget):
     def __init__(self, parent, segmentation, selectionmodel):
-        super(FrameWidget, self).__init__(parent)
+        super(FrameViewWidget, self).__init__(parent)
 
         self.segmentation = segmentation
 
         # create a vertical box layout widget
         self.vbl = QtGui.QVBoxLayout()
 
-        self.frame_canvas = FrameCanvas(segmentation, selectionmodel)
-        self.vbl.addWidget(self.frame_canvas)
+        self.canvas = FrameViewCanvas(segmentation, selectionmodel)
+        self.vbl.addWidget(self.canvas)
 
         from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT
-        self.toolbar_navigation = NavigationToolbar2QT(self.frame_canvas, self, coordinates=False)
+        self.toolbar_navigation = NavigationToolbar2QT(self.canvas, self, coordinates=False)
 
         self.frame_slider = QtGui.QSlider(QtCore.Qt.Horizontal)
         self.frame_slider.setMinimum(0)

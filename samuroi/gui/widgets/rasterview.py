@@ -1,12 +1,11 @@
-from PyQt4 import QtGui
-
 import numpy
-from matplotlib.figure import Figure
+
+from PyQt4 import QtGui
 
 from .canvasbase import CanvasBase
 
 
-class LineScanCanvas(CanvasBase):
+class RasterViewCanvas(CanvasBase):
     """
     This widget shows a bunch of child traced from one given parent mask as a color coded "linescan".
     The y axis of the resulting plot resembles the index of the child in the list of children of the parent mask.
@@ -16,7 +15,7 @@ class LineScanCanvas(CanvasBase):
 
     def __init__(self, segmentation, selectionmodel):
         # initialize the canvas where the Figure renders into
-        super(LineScanCanvas, self).__init__()
+        super(RasterViewCanvas, self).__init__()
         self.segmentation = segmentation
         self.selectionmodel = selectionmodel
         self.parent_mask = None
@@ -134,25 +133,25 @@ class LineScanCanvas(CanvasBase):
             self.segmentation.active_frame = event.xdata
 
 
-class LineScanDockWidget(QtGui.QDockWidget):
+class RasterViewDockWidget(QtGui.QDockWidget):
     def __init__(self, name, parent, segmentation):
-        super(LineScanDockWidget, self).__init__(name, parent)
+        super(RasterViewDockWidget, self).__init__(name, parent)
 
-        self.linescanwidget = LineScanCanvas(segmentation=segmentation, selectionmodel=parent.roiselectionmodel)
+        self.canvas = RasterViewCanvas(segmentation=segmentation, selectionmodel=parent.roiselectionmodel)
 
         from PyQt4 import QtCore
         from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT
-        self.toolbar_navigation = NavigationToolbar2QT(self.linescanwidget, self, coordinates=False)
+        self.toolbar_navigation = NavigationToolbar2QT(self.canvas, self, coordinates=False)
         self.toolbar_navigation.setOrientation(QtCore.Qt.Vertical)
         self.toolbar_navigation.setFloatable(True)
 
         self.widget = QtGui.QWidget()
         self.layout = QtGui.QHBoxLayout()
         self.layout.addWidget(self.toolbar_navigation)
-        self.layout.addWidget(self.linescanwidget)
+        self.layout.addWidget(self.canvas)
 
         self.widget.setLayout(self.layout)
         self.setWidget(self.widget)
 
     def set_mask(self, branch):
-        self.linescanwidget.set_mask(branch)
+        self.canvas.set_mask(branch)

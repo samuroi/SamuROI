@@ -15,14 +15,14 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
     def disable_draw(self):
         """use this context to temporarily disable all child widgets draw routines for better performance."""
 
-        with self.frame_widget.frame_canvas.disable_draw():
+        with self.frame_widget.canvas.disable_draw():
             yield
 
     @contextmanager
     def draw_on_exit(self):
         """use this context to temporarily disable all child widgets draw routines for better performance."""
 
-        with self.frame_widget.frame_canvas.draw_on_exit(), self.tracedockwidget.tracewidget.draw_on_exit(), self.linescandockwidget.linescanwidget.draw_on_exit():
+        with self.frame_widget.canvas.draw_on_exit(), self.tracedockwidget.canvas.draw_on_exit(), self.linescandockwidget.canvas.draw_on_exit():
             yield
 
     def __init__(self, data, mean=None, pmin=10, pmax=99):
@@ -52,26 +52,26 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
         self.roiselectionmodel = QtGui.QItemSelectionModel(self.roitreemodel)
 
         # create widget for frame
-        from .widgets.frame import FrameWidget
-        self.frame_widget = FrameWidget(parent=self, segmentation=self.segmentation,
-                                        selectionmodel=self.roiselectionmodel)
+        from .widgets.frameview import FrameViewWidget
+        self.frame_widget = FrameViewWidget(parent=self, segmentation=self.segmentation,
+                                            selectionmodel=self.roiselectionmodel)
         self.vbl.addWidget(self.frame_widget)
 
         self._setup_toolbars()
 
-        from .widgets.linescan import LineScanDockWidget
-        self.linescandockwidget = LineScanDockWidget("Linescan", parent=self, segmentation=self.segmentation)
+        from .widgets.rasterview import RasterViewDockWidget
+        self.linescandockwidget = RasterViewDockWidget("RasterView", parent=self, segmentation=self.segmentation)
         self.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.linescandockwidget)
         # connect to selection to update linescan if selection allows to deduce a branch
         self.roiselectionmodel.selectionChanged.connect(self.on_selection_change)
 
-        from .widgets.trace import TraceDockWidget
-        self.tracedockwidget = TraceDockWidget("Trace", parent=self, segmentation=self.segmentation,
-                                               selectionmodel=self.roiselectionmodel)
+        from .widgets.traceview import TraceViewDockWidget
+        self.tracedockwidget = TraceViewDockWidget("TraceView", parent=self, segmentation=self.segmentation,
+                                                   selectionmodel=self.roiselectionmodel)
         self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.tracedockwidget)
 
         from .roitree import RoiTreeWidget
-        self.roitreedockwidget = QtGui.QDockWidget("Treeview", parent=self)
+        self.roitreedockwidget = QtGui.QDockWidget("TreeView", parent=self)
         self.roitreewidget = RoiTreeWidget(parent=self.roitreedockwidget, model=self.roitreemodel,
                                            selectionmodel=self.roiselectionmodel)
         self.roitreedockwidget.setWidget(self.roitreewidget)

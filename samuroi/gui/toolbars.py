@@ -12,7 +12,7 @@ class ToolBar(QtGui.QToolBar):
 
     @property
     def active_frame_canvas(self):
-        return self.parent().frame_widget.frame_canvas
+        return self.parent().frame_widget.canvas
 
     @property
     def active_segmentation(self):
