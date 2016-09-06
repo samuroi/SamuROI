@@ -9,7 +9,7 @@ from .maskset import MaskSet
 from .util.event import Event
 
 
-class Segmentation(object):
+class SamuROIData(object):
     def __init__(self, data):
         self.masks = MaskSet()
         """ A joined set of all rois. Allows for easy cycling through all rois. use app.rois.remove(roi) and app.rois.add(roi). To keep this set in a consistent state with the other sets."""

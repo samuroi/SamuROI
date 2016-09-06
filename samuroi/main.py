@@ -1,6 +1,6 @@
 import numpy
 
-from samuroi import DendriteSegmentationTool
+from samuroi import SamuROIWindow
 from samuroi.plugins.tif import load_tif
 from samuroi.plugins.swc import load_swc
 
@@ -20,7 +20,7 @@ segmentation[40:70,40:70] = 40
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
     # show the gui for the filtered data
-    mainwindow = DendriteSegmentationTool(data=data)
+    mainwindow = SamuROIWindow(data=data)
 
     mainwindow.segmentation.load_swc(swc)
     from samuroi.masks.segmentation import Segmentation as SegmentationMask

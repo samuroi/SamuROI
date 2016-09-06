@@ -3,10 +3,10 @@ from contextlib import contextmanager
 import numpy
 from PyQt4 import QtCore, QtGui
 
-from ..segmentation import Segmentation
+from ..samuroidata import SamuROIData
 
 
-class DendriteSegmentationTool(QtGui.QMainWindow):
+class SamuROIWindow(QtGui.QMainWindow):
     """
     The main class that is doing the event handling, organizes the gui and puts together the plot.
     """
@@ -37,10 +37,10 @@ class DendriteSegmentationTool(QtGui.QMainWindow):
         """
         QtGui.QMainWindow.__init__(self)
 
-        self.segmentation = Segmentation(data)
+        self.segmentation = SamuROIData(data)
 
         # set window title
-        self.setWindowTitle("DendriteSegmentationTool")
+        self.setWindowTitle("SamuROI")
         # instantiate a widget, it will be the main one
         self.setCentralWidget(QtGui.QWidget(self))
         # create a vertical box layout widget

@@ -1,1 +1,1 @@
-from .gui.main import DendriteSegmentationTool
+from .gui.samuroiwindow import SamuROIWindow
