@@ -12,10 +12,9 @@ Classes
     :undoc-members:
     :show-inheritance:
 
-.. automodule:: samuroi.masks.mask
+.. autoclass:: samuroi.masks.mask.Mask
     :members:
-    :undoc-members:
-    :show-inheritance:
+    :special-members:
 
 .. automodule:: samuroi.masks.pixel
     :members:

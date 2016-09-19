@@ -11,23 +11,28 @@ Subpackages
     samuroi.plugins
     samuroi.util
 
-Submodules
-----------
+The SamuROIWindow class
+-----------------------
 
-samuroi.maskset module
-----------------------
-
-.. automodule:: samuroi.maskset
+.. autoclass:: samuroi.SamuROIWindow
     :members:
     :undoc-members:
     :show-inheritance:
 
-samuroi.segmentation module
----------------------------
+The SamuROIData class
+---------------------
 
-.. automodule:: samuroi.segmentation
+.. autoclass:: samuroi.SamuROIData
     :members:
     :undoc-members:
-    :show-inheritance:
+
+The MaskSet class
+_________________
+
+.. autoclass:: samuroi.maskset.MaskSet
+    :members:
+    :undoc-members:
+    :inherited-members:
+
 
 

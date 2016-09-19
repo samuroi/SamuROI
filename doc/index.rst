@@ -11,6 +11,8 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
+   examples
+   masks
    The SamuROI API <samuroi>
 
 

@@ -26,9 +26,18 @@ class BranchMask(Branch, Mask):
         self.__polygon = PolygonMask(outline=self.outline)
 
         self.changed = Event()
+        """The event which will be triggered when the branch mask was changed."""
 
     @property
     def children(self):
+        """
+        Get the list of child segments of this branch.
+
+        .. warning::
+            Do not modify this list manually. Instead use :py:func:`samuroi.masks.branch.BranchMask.split`.
+
+        :return: the list of children.
+        """
         return self.segments
 
     def __call__(self, data, mask):
@@ -63,13 +72,30 @@ class BranchMask(Branch, Mask):
                 yield branch
 
     def split(self, nsegments=2, length=None, k=1, s=0):
+        """
+        Split this branch and create a set of child segments.
+
+        .. note::
+            One can either provide a `nsegments` or `length`.
+
+        Spliting of a branch will modify the :py:attr:`samuroi.masks.branch.BranchMask.children` attribute
+        and hence trigger a :py:attr:`samuroi.masks.branch.BranchMask.changed` event.
+
+        :param nsegments: the number of segments.
+        :param length: the length of each segment (the last segment will have the remainder of modulo division).
+        :param k: smoothnes parameter for spline interpolation
+        :param s: smoothnes parameter for spline interpolation
+        """
         branches = Branch.split(self, nsegments=nsegments, length=length, k=k, s=s)
         self.segments = [SegmentMask(data=b.data, parent=self) for b in branches]
         self.changed(self)
 
     def linescan(self, data, mask):
         """
-        Calculate the trace for all children and return a 2D array aka linescan for that branch roi.
+        Calculate the trace for all children and return a 2D array of traces.
+        :param data: the data to apply on.
+        :param mask: some addiotional overlay mask
+        :return: 2D numpy array holding traces for all children
         """
         return numpy.row_stack((child(data, mask) for child in self.segments))
 

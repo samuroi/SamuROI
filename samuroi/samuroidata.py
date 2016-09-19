@@ -10,25 +10,86 @@ from .util.event import Event
 
 
 class SamuROIData(object):
+    """
+    This is the main data structure of SamuROI.
+    It combines various aspects of rois, overlays and the video data that is to be analysed.
+
+    The most important data attributes of this class are (see respective documentation for further info):
+
+    - :py:attr:`samuroi.SamuROIData.masks`
+    - :py:attr:`samuroi.SamuROIData.data`
+    - :py:attr:`samuroi.SamuROIData.threshold`
+    - :py:attr:`samuroi.SamuROIData.overlay`
+    - :py:attr:`samuroi.SamuROIData.postprocessor`
+
+    Whenever some of there attributes are changed via their property setter functions (e.g. `samudata.threshold = 5`)
+    those setters will emit a signal via some event object (see :py:class:`samuroi.util.event.Event`).
+    E.g. the events for the above attributes are:
+
+    - :py:attr:`samuroi.maskset.MaskSet.added` and :py:attr:`samuroi.maskset.MaskSet.removed`
+    - :py:attr:`samuroi.SamuROIData.data_changed`
+    - :py:attr:`samuroi.SamuROIData.threshold_changed`
+    - :py:attr:`samuroi.SamuROIData.overlay_changed`
+    - :py:attr:`samuroi.SamuROIData.postprocessor_changed`
+
+    If one wants to get notified about any of those changes, one can simply connect to the events:
+
+    .. code-block:: python
+
+        def my_callback():
+            print "I got triggered :-D"
+        samudata.masks.added.append(my_callback)
+
+    In this manner GUI updates and other custom tasks can be completely separated from the data structure.
+    """
+
     def __init__(self, data):
-        self.masks = MaskSet()
-        """ A joined set of all rois. Allows for easy cycling through all rois. use app.rois.remove(roi) and app.rois.add(roi). To keep this set in a consistent state with the other sets."""
-
-        self.data_changed = Event()
-        self.overlay_changed = Event()
-        self.postprocessor_changed = Event()
-
         self.postprocessor = self.no_postprocessor
 
         # call the property setter which will initialize the mean data and threshold value
         self.data = data
 
         # todo: the active frame is merely a utility to synchronize widgets. maybe it should go to the gui...
-        self.active_frame_changed = Event()
         self.active_frame = 0
+
+    @cached_property
+    def masks(self):
+        """
+        A joined set of all masks of type :py:class:`samuroi.maskset.MaskSet`.
+        Use `masks.remove(some_mask)` and `masks.add(some_mask)` to manipulate the set.
+        Insertions and removements will trigger events that can be connected to.
+        """
+        return MaskSet()
+
+    @cached_property
+    def data_changed(self):
+        """This is a signal which should be triggered whenever the underlying 3D numpy data has changed."""
+        return Event()
+
+    @cached_property
+    def overlay_changed(self):
+        """This is a signal which should be triggered whenever the 2D overlay mask has changed."""
+        return Event()
+
+    @cached_property
+    def postprocessor_changed(self):
+        """This is a signal which should be triggered whenever the postprocessor has changed."""
+        return Event()
+
+    @cached_property
+    def active_frame_changed(self):
+        """This is a signal which should be triggered whenever the active frame has changed."""
+        return Event()
 
     @property
     def active_frame(self):
+        """
+        The number of the selected frame of the dataset.
+
+        :getter: Set active frame number.
+        :setter: Change to some other frame. This will trigger the :py:attr:`samuroi.SamuROIData.active_frame_changed` event.
+        :type: int in range `[0,n_frames(`
+        """
         return self.__active_frame
 
     @active_frame.setter
@@ -40,6 +101,9 @@ class SamuROIData(object):
 
     @property
     def pixelmasks(self):
+        """
+        :return: A generator object that allows iteration over all pixel masks in the document.
+        """
         from .masks.pixel import PixelMask
         if PixelMask not in self.masks.types():
             return
@@ -48,6 +112,9 @@ class SamuROIData(object):
 
     @property
     def branchmasks(self):
+        """
+        :return: A generator object that allows iteration over all branch masks in the document.
+        """
         from .masks.branch import BranchMask
         if BranchMask not in self.masks.types():
             return
@@ -56,6 +123,9 @@ class SamuROIData(object):
 
     @property
     def circlemasks(self):
+        """
+        :return: A generator object that allows iteration over all circle masks in the document.
+        """
         from .masks.circle import CircleMask
         if CircleMask not in self.masks.types():
             return
@@ -64,18 +134,24 @@ class SamuROIData(object):
 
     @property
     def polymasks(self):
+        """
+        :return: A generator object that allows iteration over all polygon masks in the document.
+        """
         from .masks.polygon import PolygonMask
         if PolygonMask not in self.masks.types():
             return
         for i in self.masks[PolygonMask]:
             yield i
 
-    def split_branches(self, length):
-        for b in self.branchmasks:
-            b.split(length=length)
-
     @property
     def data(self):
+        """
+        The main video data onto which all masks get applied.
+
+        :getter: Get the present video data.
+        :setter: Change to some other video data. Changing the data will trigger the :py:attr:`samuroi.SamuROIData.data_changed` event.
+        :type: 3d numpy array dtype should be float or int
+        """
         return self.__data
 
     @data.setter
@@ -91,10 +167,23 @@ class SamuROIData(object):
 
     @cached_property
     def meandata(self):
+        """
+        Provide pixel wise mean over the video data.
+        This is a lazy property, i.e. its value is calculated only if needed and then reused for repeated calls.
+        :type: 2d numpy array of floats.
+        """
         return numpy.mean(self.data, axis=-1)
 
     @property
     def overlay(self):
+        """
+        The overlay is a binary mask with the same shape as the video data such that it can be applied to every frame
+        of the video data. One can automatically set an overlay via :py:attr:`samuroi.SamuROIData.threshold`, or provide a custom overlay.
+
+        :getter: Get the present overlay
+        :setter: Set the overlay to given binary mask. This will trigger overlay_changed.
+        :type: numpy.ndarray(dtype=bool,shape=self.data.shape[0:2])
+        """
         return self.__overlay
 
     @overlay.setter
@@ -109,6 +198,16 @@ class SamuROIData(object):
 
     @property
     def threshold(self):
+        """
+        The threshold value controls the overlay mask.
+        Higher threshold values will exclude larger areas.
+        Lower threshold values are less restrictive.
+
+        :getter: Get the present threshold value
+        :setter: Set the threshold value. This will trigger a recalculation of :py:attr:`samuroi.SamuROIData.overlay` which in
+                    turn will trigger overlay_changed.
+        :type: float
+        """
         return self.__threshold
 
     @threshold.setter
@@ -125,6 +224,10 @@ class SamuROIData(object):
 
     @property
     def no_postprocessor(self):
+        """
+        :return: A default postprocessor which does nothing.
+        """
+
         def identity(x):
             return x
 
@@ -132,7 +235,15 @@ class SamuROIData(object):
 
     @property
     def postprocessor(self):
-        """A function that postprocesses traces"""
+        """
+        A postprocessor is a function which can be applied on traces.
+        It takes a 1D numpy array as argument and returns a transformed array with the same shape.
+        Defaults to :py:attr:`samuroi.SamuROIData.no_postprocessor`.
+
+        :getter: get the function object.
+        :setter: set the function object. Will trigger postprocessor_changed event.
+        :type: callable object (1D numpy array -> 1D numpy array)
+        """
         return self.__postprocessor
 
     @postprocessor.setter
@@ -143,17 +254,24 @@ class SamuROIData(object):
     def save_hdf5(self, filename, mask=True, pixels=True, branches=True, circles=True, polygons=True, data=False,
                   traces=True):
         """
-        Create a hdf5 file holding the overlay mask, the rois and the traces of the current setup.
         The structure of the hdf5 file will be as follows:
-            - mask (dataset, optional, binary mask defined by threshold value, threshold is stored as attribute)
-            - data (dataset, optional, the full 3D dataset from which the traces were generated)
-            - branches/circles... (groups holding different kinds of datasets for masks)
-            - traces (group that holds a hierachy for the traces.)
-        Args:
-            filename: filename to use, suffix ".h5" will be added if missing.
-            mask: flag whether mask should be stored in file. default = True
-            data: flag whether data should be stored in file. default = False
+
+        - overlay (dataset, optional, binary mask defined by threshold value, threshold is stored as attribute)
+        - data (dataset, optional, the full 3D dataset from which the traces were generated)
+        - branches/circles... (groups holding different kinds of datasets for masks)
+        - traces (group that holds a hierarchy for the traces.)
+
+        :param filename: filename to use, suffix ".h5" will be added if missing.
+        :param mask: flag whether mask should be stored in file.
+        :param pixels:
+        :param branches:
+        :param circles:
+        :param polygons:
+        :param data: flag whether data should be stored in file.
+        :param traces:
+        :return:
         """
+
         import h5py
         f = h5py.File(filename, mode='w')
         f.clear()
@@ -197,6 +315,14 @@ class SamuROIData(object):
         f.close()
 
     def load_swc(self, swc):
+        """
+        Load the content from the given swc object.
+
+        Branches with only a single coordinate will be loaded as circles.
+        Branches with more than one coordinate as "tubes".
+
+        :param swc: A object of type :py:class:`samuroi.plugins.swc.SWCFile`.
+        """
         # get all parts from the swc file that have at least one segment
         from .masks.circle import CircleMask
         from .masks.branch import BranchMask
@@ -208,6 +334,17 @@ class SamuROIData(object):
             self.masks.add(mask)
 
     def load_hdf5(self, filename, mask=True, pixels=True, branches=True, circles=True, polygons=True, data=True):
+        """
+        Load data that from hd5 file.
+
+        :param filename: The filename/path to read from (include extension)
+        :param mask: flag whether to read the mask if it is stored in file.
+        :param pixels: flag whether to read the pixel masks if some are stored in file.
+        :param branches: flag whether to read the branch masks if some are stored in file.
+        :param circles: flag whether to read the circle masks if some are stored in file.
+        :param polygons: flag whether to read the polygon masks if some are stored in file.
+        :param data: flag whether to read the data if it is stored in file.
+        """
         from .masks.pixel import PixelMask
         from .masks.branch import BranchMask
         from .masks.circle import CircleMask

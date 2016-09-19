@@ -5,7 +5,7 @@ Classes
 .. automodule:: samuroi.gui.h5dialogs
     :members:
 
-.. automodule:: samuroi.gui.main
+.. automodule:: samuroi.gui.samuroiwindow
     :members:
 
 .. automodule:: samuroi.gui.roiitemmodel

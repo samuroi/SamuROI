@@ -186,6 +186,9 @@ class Branch(numpy.recarray):
 
 
 class SWCFile(numpy.recarray):
+    """
+    Subclass of numpy.recarray for swc files.
+    """
 
     swcformat = [('id',int),('kind',int),('x',float),('y',float),('z',float),
                 ('radius',float),('parent_id',int)]
@@ -204,6 +207,10 @@ class SWCFile(numpy.recarray):
         return d.view(SWCFile)
 
     def __init__(self,filename = None):
+        """
+        Create a numpy recarray for given swc file.
+        :param filename (str): the path/filename to load.
+        """
         self.filename = filename
         if self['id'][0] != 1:
             raise Exception("SWC id ordering needs to start with 1.")
@@ -218,10 +225,16 @@ class SWCFile(numpy.recarray):
 
     @property
     def nbranches(self):
+        """
+        :return: The number of branches in the file.
+        """
         return (self['parent_id'] == -1).sum()
 
     @property
     def branches(self):
+        """
+        :return: A generator object that allows to iterate over all branches.
+        """
         last_index = 0
         for index in numpy.flatnonzero(self['id'] != self['parent_id'] + 1):
             if last_index == index: continue
