@@ -33,7 +33,7 @@ class MaskToolbar(ToolBar):
         self.btn_toggle.triggered.connect(lambda on: setattr(self.active_frame_canvas, "show_overlay", on))
 
         self.threshold_spin_box = QtGui.QDoubleSpinBox(value=0)
-        self.threshold_spin_box.setRange(0, self.active_segmentation.threshold * 99)
+        self.threshold_spin_box.setRange(0., self.active_segmentation.threshold * 99.)
         self.threshold_spin_box.setValue(self.active_segmentation.threshold)
         self.threshold_spin_box.setAlignment(QtCore.Qt.Alignment(QtCore.Qt.AlignRight))
         self.threshold_spin_box.setSingleStep(self.active_segmentation.threshold * .05)
