@@ -99,12 +99,13 @@ def power_spectrum(data, fs):
     return df, avgpower
 
 
-def bandstop(data, fs, start, stop):
+def bandstop(data, fs, start, stop, order = 3):
     """
     Apply bandstop filter on data.
 
     :param data: 3D video data
     :param fs: sampling frequency
+    :param order: the order of butter filter used.
     :param start: lower frequency where band starts
     :param stop: higher frequency where band ends
     :return: the filtered 3d data set.
@@ -112,7 +113,7 @@ def bandstop(data, fs, start, stop):
     nyq = 0.5 * fs
     high = stop / nyq
     low = start / nyq
-    order = 6
+    order = order
     b, a = scipy.signal.butter(order, [low, high], btype='bandstop')
     # zi = scipy.signal.lfiltic(b, a, y=[0.])
     dataf = scipy.signal.lfilter(b, a, data)
