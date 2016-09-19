@@ -1,3 +1,5 @@
+[<img src="https://readthedocs.org/projects/samuroi/badge/?version=latest">](http://samuroi.readthedocs.io/en/latest/?badge=latest)
+
 # SamuROI
 If you use this software, please cite:
 You can find the documentation at: http://samuroi.readthedocs.io/en/latest/
