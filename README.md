@@ -7,6 +7,7 @@ SamuROI requires the following python packages:
 - python
 - numpy
 - matplotlib
+- cached_property
 - opencv
 - h5py
 - scikit-image
