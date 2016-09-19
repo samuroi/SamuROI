@@ -14,4 +14,7 @@ Functions
 .. automodule:: samuroi.plugins.tif
     :members:
 
+.. automodule:: samuroi.plugins.baseline
+    :members:
+
 """
