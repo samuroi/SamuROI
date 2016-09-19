@@ -32,8 +32,7 @@ def stdv_F0(data, windows=None):
     different blocks.
 
     :param data: NxMxF array, where F is number of frames and NxM is image shape.
-    :param windows: The number of windows to use. Default: split the data in blocks of 100 frames. If
-    data.shape[2] mod 100 != 0 drop the frames that are remaining.
+    :param windows: The number of windows to use. Default: split the data in blocks of 100 frames. If data.shape[2] mod 100 != 0 drop the frames that are remaining.
     :return: NxM array with baseline for each pixel.
     """
     X, Y, T = data.shape
@@ -89,8 +88,7 @@ def power_spectrum(data, fs):
 
     :param data: the 3D video data.
     :param fs: sampling frequency.
-    :return: tuple(df,avgpower) where df is a 1d array of frequencies and avgpower is a 1D array with the respective
-    average power.
+    :return: tuple(df,avgpower) where df is a 1d array of frequencies and avgpower is a 1D array with the respective average power.
     """
     N = data.shape[-1] / 2
     _dfft = numpy.fft.fft(data, axis=-1)
