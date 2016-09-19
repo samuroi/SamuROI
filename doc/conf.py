@@ -20,6 +20,10 @@ import os
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath('..'))
 
+import mock
+MOCK_MODULES = ['PyQt4', 'PyQt4.QtGui', 'PyQt4.QtCore']
+sys.modules.update((mod_name, mock.MagicMock()) for mod_name in MOCK_MODULES)
+
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
