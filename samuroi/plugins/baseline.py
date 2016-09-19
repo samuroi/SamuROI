@@ -30,6 +30,7 @@ def stdv_F0(data, windows=None):
     Then takes the block with minimum standard deviation and calculate the mean of that block.
     The above is done on a per pixel basis. I.e. different pixels can have the mean calculated for
     different blocks.
+
     :param data: NxMxF array, where F is number of frames and NxM is image shape.
     :param windows: The number of windows to use. Default: split the data in blocks of 100 frames. If
     data.shape[2] mod 100 != 0 drop the frames that are remaining.
@@ -70,8 +71,8 @@ def stdv_deltaF(data, F0=None, windows=None):
     for the definition of F0 see :py:func:`samuroi.plugins.baseline.stdv_F0`.
 
     :param data: The video data, shape M,N,T
-    :param F0: The number of windows, forwarded to stdv_F0
-    :param windows:
+    :param F0: precalculated F0 or None(default calculate F0 internally)
+    :param windows: The number of windows, forwarded to stdv_F0
     :return:  numpy.array with shape M,N,T with values :math:`(F(x,y,t)-F0(x,y))/F0(x,y)`
     """
     if F0 is None:
@@ -85,7 +86,7 @@ def stdv_deltaF(data, F0=None, windows=None):
 def power_spectrum(data, fs):
     """
     Calculate the power spectrum for each pixel and then average over all pixels.
-    Returns: tuple df,ds
+
     :param data: the 3D video data.
     :param fs: sampling frequency.
     :return: tuple(df,avgpower) where df is a 1d array of frequencies and avgpower is a 1D array with the respective
