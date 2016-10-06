@@ -199,9 +199,10 @@ class RoiItem(TreeItem):
         TreeItem.remove(self,slice= slice(None))
 
         # add all children
-        TreeItem.add(self, [RoiItem(parent=self, model=self.model) for child in self.mask.children])
-        for item, mask in zip(self.children, self.mask.children):
-            item.mask = mask
+        if(hasattr(self.mask,"children")):
+            TreeItem.add(self, [RoiItem(parent=self, model=self.model) for child in self.mask.children])
+            for item, mask in zip(self.children, self.mask.children):
+                item.mask = mask
 
     def __repr__(self):
         if hasattr(self.mask, "events"):

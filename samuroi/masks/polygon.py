@@ -1,7 +1,7 @@
 import numpy
 
 from .mask import Mask
-
+from ..util.event import Event
 
 class PolygonMask(Mask):
     """
@@ -11,6 +11,7 @@ class PolygonMask(Mask):
     def __init__(self, outline, name=None):
         super(PolygonMask, self).__init__(name=name)
         self.__outline = outline
+        self.changed = Event()
 
     @property
     def outline(self):
@@ -23,6 +24,11 @@ class PolygonMask(Mask):
     @property
     def upperright(self):
         return numpy.max(self.outline, axis=0).astype(int) + 1
+
+    def move(self, offset):
+        self.__outline[:, 0] += offset[0]
+        self.__outline[:, 1] += offset[1]
+        self.changed(self)
 
     def to_hdf5(self, f):
         if 'polygons' not in f:

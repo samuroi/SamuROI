@@ -14,6 +14,17 @@ class SegmentMask(Branch, Mask):
     def __call__(self, data, mask):
         return self.__polygon(data, mask)
 
+    def move(self, offset):
+        """Move the segment don't trigger any event since this will be handled by the parent branch object."""
+        new_x = self.data.x + offset[0]
+        new_y = self.data.y + offset[1]
+        import numpy
+        dtype = [('x', float), ('y', float), ('z', float), ('radius', float)]
+        self.data = numpy.rec.fromarrays([new_x, new_y, self.data.z, self.data.radius], dtype=dtype)
+
+        from .polygon import PolygonMask
+        self.__polygon = PolygonMask(outline=self.outline)
+
     def split(self, nsegments=2, length=None, k=1, s=0):
         """Split the segment in n equal parts, and adopt the parent branch accordingly."""
 

@@ -114,6 +114,10 @@ class SamuROIWindow(QtGui.QMainWindow):
         self.toolbar_mask = MaskToolbar(parent=self)
         self.addToolBar(self.toolbar_mask)
 
+        from .toolbars import MaskMovingToolbar
+        self.toolbar_move = MaskMovingToolbar(parent=self)
+        self.addToolBar(self.toolbar_move)
+
         from .toolbars import SplitJoinToolbar
         self.toolbar_splitjoin = SplitJoinToolbar(parent=self)
         self.addToolBar(self.toolbar_splitjoin)

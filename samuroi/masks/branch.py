@@ -71,6 +71,23 @@ class BranchMask(Branch, Mask):
                         branch.children.append(child)
                 yield branch
 
+    def move(self, offset):
+        """Move the branch and remove all its children."""
+
+        new_x = self.data.x + offset[0]
+        new_y = self.data.y + offset[1]
+
+        dtype = [('x', float), ('y', float), ('z', float), ('radius', float)]
+        self.data = numpy.rec.fromarrays([new_x, new_y, self.data.z, self.data.radius], dtype=dtype)
+
+        from .polygon import PolygonMask
+        self.__polygon = PolygonMask(outline=self.outline)
+
+        for child in self.segments:
+            child.move(offset)
+
+        self.changed(self)
+
     def split(self, nsegments=2, length=None, k=1, s=0):
         """
         Split this branch and create a set of child segments.

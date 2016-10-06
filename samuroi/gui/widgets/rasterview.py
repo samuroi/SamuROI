@@ -101,6 +101,8 @@ class RasterViewCanvas(CanvasBase):
 
     def on_mask_change(self, branch):
         """Will be called when the parent masks number of children changes."""
+        if branch in self.__linescans:
+            del self.__linescans[branch]
         self.redraw()
 
     @property

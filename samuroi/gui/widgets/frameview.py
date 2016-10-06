@@ -237,21 +237,22 @@ class FrameViewCanvas(CanvasBase):
         self.draw()
 
     def add_mask(self, mask):
-        # create an artist based on the type of roi
-        from samuroi.masks.segmentation import Segmentation
-        mapping = {
-            CircleMask: self.create_circle_artist,
-            BranchMask: self.create_outlined_artist,
-            PolygonMask: self.create_outlined_artist,
-            PixelMask: self.create_pixel_artist,
-            Segmentation: self.create_segmentation_artist
-        }
-        func = mapping[type(mask)]
-        if not hasattr(mask, "color"):
-            mask.color = self.colorcycle.next()
-        func(mask=mask, color=mask.color)
-        if hasattr(mask, "changed"):
-            mask.changed.append(self.on_mask_changed)
+        with self.draw_on_exit():
+            # create an artist based on the type of roi
+            from samuroi.masks.segmentation import Segmentation
+            mapping = {
+                CircleMask: self.create_circle_artist,
+                BranchMask: self.create_outlined_artist,
+                PolygonMask: self.create_outlined_artist,
+                PixelMask: self.create_pixel_artist,
+                Segmentation: self.create_segmentation_artist
+            }
+            func = mapping[type(mask)]
+            if not hasattr(mask, "color"):
+                mask.color = self.colorcycle.next()
+            func(mask=mask, color=mask.color)
+            if hasattr(mask, "changed"):
+                mask.changed.append(self.on_mask_changed)
 
     def remove_mask(self, mask):
         with self.draw_on_exit():
@@ -259,14 +260,24 @@ class FrameViewCanvas(CanvasBase):
             for child in getattr(mask, "children", []):
                 self.remove_mask(child)
 
-            artist = self.__artists[mask]
-            artist.remove()
-            del self.__artists[mask]
+            if mask in self.__artists:
+                artist = self.__artists[mask]
+                artist.remove()
+                del self.__artists[mask]
             if hasattr(mask, "changed"):
                 mask.changed.remove(self.on_mask_changed)
 
     def on_mask_changed(self, modified_mask):
         with self.draw_on_exit():
+            # remove and add in case the mask was moved
+            self.remove_mask(modified_mask)
+            self.add_mask(modified_mask)
+            # check if the mask is selected and display it accordingly
+            model = self.selectionmodel.model()
+            # get the model index for the mask
+            index = model.find(modified_mask)
+            if self.selectionmodel.isSelected(index):
+                self.__artists[modified_mask].set_selected(True)
             # remove all child artists
             self.remove_child_artists(parent=modified_mask)
             # redraw potential new child artists

@@ -105,31 +105,33 @@ class SplitJoinToolbar(ToolBar):
         # self.btn_merge_segment_right.triggered.connect(lambda: self.app.join_segments(next=True))
 
 
-#
-# class NavigationToolbar(ToolBar):
-#     def __init__(self, parent, *args, **kwargs):
-#         super(NavigationToolbar, self).__init__(parent=parent, *args, **kwargs)
-#
-#         self.index = 0
-#         """The index of the rois that is currently selected"""
-#
-#         self.btn_prev_roi = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSkipBackward), "<<")
-#         # self.btn_prev_roi.triggered.connect(self.active_segmentation.mask_cycle.prev)
-#         self.btn_prev_roi.setToolTip("Select next roi.")
-#
-#         self.btn_prev_seg = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSeekBackward), "<")
-#         # self.btn_prev_seg.triggered.connect(self.app.previous_segment)
-#         self.btn_prev_seg.setEnabled(False)
-#         self.btn_prev_seg.setToolTip("Select next segment.")
-#
-#         self.btn_next_seg = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSeekForward), ">")
-#         self.btn_next_seg.setEnabled(False)
-#         # self.btn_next_seg.triggered.connect(self.app.next_segment)
-#         self.btn_next_seg.setToolTip("Select previous segment.")
-#
-#         self.btn_next_roi = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_MediaSkipForward), ">>")
-#         # self.btn_next_roi.triggered.connect(self.active_segmentation.mask_cycle.next)
-#         self.btn_next_roi.setToolTip("Select previous roi.")
+class MaskMovingToolbar(ToolBar):
+    def __init__(self, parent, *args, **kwargs):
+        super(MaskMovingToolbar, self).__init__(parent=parent, *args, **kwargs)
+
+        self.btn_move_left = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_ArrowLeft), "<-")
+        self.btn_move_left.triggered.connect(lambda: self.on_move([-1, 0]))
+        self.btn_move_left.setToolTip("Move selected masks left.")
+
+        self.btn_move_right = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_ArrowRight), "->")
+        self.btn_move_right.triggered.connect(lambda: self.on_move([1, 0]))
+        self.btn_move_right.setToolTip("Move selected masks right.")
+
+        self.btn_move_up = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_ArrowUp), "^")
+        self.btn_move_up.triggered.connect(lambda: self.on_move([0, -1]))
+        self.btn_move_up.setToolTip("Move selected masks upwards.")
+
+        self.btn_move_down = self.addAction(self.style().standardIcon(QtGui.QStyle.SP_ArrowDown), "v")
+        self.btn_move_down.triggered.connect(lambda: self.on_move([0, 1]))
+        self.btn_move_down.setToolTip("Move selected masks downwards.")
+
+    def on_move(self, offset):
+        with self.parent().draw_on_exit():
+            for sr in self.parent().roiselectionmodel.selection():
+                for index in sr.indexes():
+                    item = index.internalPointer()
+                    if hasattr(item.mask, "move"):
+                        item.mask.move(offset)
 
 
 class ManageRoiToolbar(ToolBar):

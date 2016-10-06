@@ -51,12 +51,18 @@ class TraceViewCanvas(CanvasBase):
         self.axes.autoscale_view(scalex=False)
         self.draw()
 
+    def on_mask_change(self, modified_mask):
+        self.update_traces()
+
     def on_selection_changed(self, selected, deselected):
         for range in deselected:
             for index in range.indexes():
                 item = index.internalPointer()
                 # the selection could also be a whole tree of e.g. BranchMasks
                 if item.mask is not None and item.mask in self.__artist:
+                    # disconnect from the artist change slot
+                    if hasattr(item.mask, "changed"):
+                        item.mask.changed.remove(self.on_mask_change)
                     # remove the artist
                     for artist in self.__artist[item.mask]:
                         artist.remove()
@@ -69,6 +75,9 @@ class TraceViewCanvas(CanvasBase):
             for index in range.indexes():
                 item = index.internalPointer()
                 if item.mask is not None and item.mask not in self.__artist:
+                    # connect to the masks changed slot
+                    if (hasattr(item.mask, "changed")):
+                        item.mask.changed.append(self.on_mask_change)
                     artists = []
                     if not hasattr(item.mask, "color"):
                         item.mask.color = cycol()
