@@ -15,9 +15,8 @@ class BranchMaskCreator(MaskCreator):
         # call base class property setter
         MaskCreator.enabled.fset(self, e)
         # handle own derived stuff
-        if self.artist is not None and not e:
+        if self.artist is not None:
             self.artist.remove()
-            self.status = None
             self.artist = None
             self.x, self.y, self.r = [], [], []
             self.update()
@@ -32,7 +31,6 @@ class BranchMaskCreator(MaskCreator):
                 enabled, should mask creation be enabled from the begininig (default False)
         """
         self.artist = None
-        self.status = None
         # container for x,y and radius values
         self.x, self.y, self.r = [], [], []
         super(BranchMaskCreator, self).__init__(axes=axes,
@@ -40,12 +38,6 @@ class BranchMaskCreator(MaskCreator):
                                                 update=update,
                                                 notify=notify,
                                                 enabled=enabled)
-
-    def __contains(self, x, y):
-        if x in self.status.x:
-            i = self.status.x.index(x)
-            return self.status.y[i] == y
-        return False
 
     def onclick(self, event):
         self.x.append(event.xdata)
