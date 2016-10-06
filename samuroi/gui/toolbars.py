@@ -153,6 +153,33 @@ class ManageRoiToolbar(ToolBar):
         self.add_pixelmask.setChecked(False)
         self.add_mask(mask)
 
+    def on_branchmask_trigger(self, checked):
+        if checked:
+            self.add_pixelmask.setChecked(False)
+            self.add_polymask.setChecked(False)
+            self.pixelmask_creator.enabled = False
+            self.polymask_creator.enabled = False
+
+        self.branchmask_creator.enabled = checked
+
+    def on_polymask_trigger(self, checked):
+        if checked:
+            self.add_pixelmask.setChecked(False)
+            self.add_branchmask.setChecked(False)
+            self.pixelmask_creator.enabled = False
+            self.branchmask_creator.enabled = False
+
+        self.polymask_creator.enabled = checked
+
+    def on_pixelmask_trigger(self, checked):
+        if checked:
+            self.add_polymask.setChecked(False)
+            self.add_branchmask.setChecked(False)
+            self.polymask_creator.enabled = False
+            self.branchmask_creator.enabled = False
+
+        self.pixelmask_creator.enabled = checked
+
     def remove_roi(self):
         assert (self.active_segmentation is self.active_frame_canvas.segmentation)
         for index in self.parent().roiselectionmodel.selectedIndexes():
@@ -173,10 +200,11 @@ class ManageRoiToolbar(ToolBar):
                   "If the freehand mode is active each click into the 2D image\n" + \
                   "will add a pixel to the pixel mask. Pressing <enter> will finish\n" + \
                   "the mask and the next clicks will create another pixel mask."
+
         self.add_pixelmask = self.addAction("P")
         self.add_pixelmask.setCheckable(True)
         self.add_pixelmask.setToolTip(tooltip)
-        self.add_pixelmask.triggered.connect(lambda: setattr(self.pixelmask_creator, 'enabled', True))
+        self.add_pixelmask.triggered.connect(self.on_pixelmask_trigger)
 
         from ..util.branchmaskcreator import BranchMaskCreator
         self.branchmask_creator = BranchMaskCreator(axes=self.active_frame_canvas.axes,
@@ -189,7 +217,7 @@ class ManageRoiToolbar(ToolBar):
         self.add_branchmask = self.addAction("B")
         self.add_branchmask.setCheckable(True)
         self.add_branchmask.setToolTip(tooltip)
-        self.add_branchmask.triggered.connect(lambda: setattr(self.branchmask_creator, 'enabled', True))
+        self.add_branchmask.triggered.connect(self.on_branchmask_trigger)
 
         from ..util.polymaskcreator import PolyMaskCreator
         self.polymask_creator = PolyMaskCreator(axes=self.active_frame_canvas.axes,
@@ -204,7 +232,7 @@ class ManageRoiToolbar(ToolBar):
         self.add_polymask = self.addAction('F')
         self.add_polymask.setCheckable(True)
         self.add_polymask.setToolTip(tooltip)
-        self.add_polymask.triggered.connect(lambda: setattr(self.polymask_creator, 'enabled', True))
+        self.add_polymask.triggered.connect(self.on_polymask_trigger)
 
         tooltip = "Delete/remove the currently selected roi."
 

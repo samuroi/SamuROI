@@ -96,7 +96,7 @@ Installing a custom postprocessor
 ---------------------------------
 Often one wants to apply some custom postprocessor to traces produces by the ROIs. This can be achieved by installing a
 custom postprocessor. E.g. if you click on the "detrend" and "smoothen" buttons in the gui, respective postprocessors
-will transform the trace bevore it gets displayed in any widget. In this example we will show how we can transform the
+will transform the trace before it gets displayed in any widget. In this example we will show how we can transform the
 trace such that it has a zero mean over time.
 
 .. code-block:: python
@@ -124,7 +124,7 @@ Pretty easy, huh? Let's try something more advanced:
 
 SamuROI from within normal python scripts
 -----------------------------------------
-Ususally the IPython notebook takes care of some Qt mechanics that are required by SamuROI.
+Usually the IPython notebook takes care of some Qt mechanics that are required by SamuROI.
 Specifically this is: The Qt main event loop, which handles all direct user input on the GUI.
 Hence when one wants to run SamuROI from within a script, this handling has to be done by one self.
 The following example shows what is necessary and provides a nice starting point for your own applications :-)

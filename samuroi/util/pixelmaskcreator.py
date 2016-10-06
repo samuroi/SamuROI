@@ -17,8 +17,9 @@ class PixelMaskCreator(MaskCreator):
         # handle own derived stuff
         if self.status is not None:
             self.status.scatter.remove()
-            self.update()
             self.status = None
+            self.update()
+
 
     def __init__(self, axes, canvas, update, notify, enabled=False):
         """

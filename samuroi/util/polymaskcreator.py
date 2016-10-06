@@ -17,8 +17,8 @@ class PolyMaskCreator(MaskCreator):
         # handle own derived stuff
         if self.status is not None:
             self.status.line.remove()
-            self.update()
             self.status = None
+            self.update()
 
     def __init__(self, axes, canvas, update, notify, enabled=False):
         """

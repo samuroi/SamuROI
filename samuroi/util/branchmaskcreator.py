@@ -15,10 +15,12 @@ class BranchMaskCreator(MaskCreator):
         # call base class property setter
         MaskCreator.enabled.fset(self, e)
         # handle own derived stuff
-        if self.artist is not None:
+        if self.artist is not None and not e:
             self.artist.remove()
-            self.update()
             self.status = None
+            self.artist = None
+            self.x, self.y, self.r = [], [], []
+            self.update()
 
     def __init__(self, axes, canvas, update, notify, enabled=False):
         """
