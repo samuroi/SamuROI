@@ -9,14 +9,28 @@ SamuROI requires the following python packages:
 - python
 - numpy
 - matplotlib
-- cached_property
+- cached-property
 - opencv
 - h5py
 - scikit-image
 - pyqt
 - pillow
 
-## Installation via conda (recommended)
+## Installation
+### From source with conda (recommended)
+ 1. Install the requirements listed above with the conda package manager:
+ 
+  `conda install <dependency>`
+ 2. Clone SamuROI git repository:
+ 
+  `git clone https://github.com/aolsux/SamuROI.git`
+ 3. Tell conda about the downloaded git repository. This will e.g. add the source directory to python path.
+ 
+    `conda develop /path/to/local/git/repo`
+    
+    Unless you haven't specified a special directory for git to clone into, your `/path/to/local/git/repo` will just be `.SamuROI`.
+
+### Via conda package manager (hopefully comming soon)
 It is recommended to install SamuROI via the conda package manager, 
 since conda comes with packages for scikit-image, opencv and pyqt.
 `conda install samuroi`
