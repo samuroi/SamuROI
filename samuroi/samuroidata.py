@@ -28,7 +28,7 @@ class SamuROIData(object):
 
     - :py:attr:`samuroi.maskset.MaskSet.added` and :py:attr:`samuroi.maskset.MaskSet.removed`
     - :py:attr:`samuroi.SamuROIData.data_changed`
-    - :py:attr:`samuroi.SamuROIData.threshold_changed`
+    - :py:attr:`samuroi.SamuROIData.update_threshold`
     - :py:attr:`samuroi.SamuROIData.overlay_changed`
     - :py:attr:`samuroi.SamuROIData.postprocessor_changed`
 
@@ -43,11 +43,22 @@ class SamuROIData(object):
     In this manner GUI updates and other custom tasks can be completely separated from the data structure.
     """
 
-    def __init__(self, data):
+    def __init__(self, data, morphology=None):
+        """
+        This function will set up the underlying data structure. If no morphology is provided, the morphology array will
+        be generated as `numpy.max(data,axis=-1)`, i.e. a maximum projection over data along the time axis.
+        :param data:
+        :param morphology: This can either be a 2D numpy array with the same shape as the video, or None.
+        """
         self.postprocessor = self.no_postprocessor
 
         # call the property setter which will initialize the mean data and threshold value
         self.data = data
+
+        if morphology is None:
+            self.morphology = numpy.max(data, axis=-1)
+        else:
+            self.morphology = morphology
 
         # todo: the active frame is merely a utility to synchronize widgets. maybe it should go to the gui...
         self.active_frame = 0
@@ -79,6 +90,16 @@ class SamuROIData(object):
     @cached_property
     def active_frame_changed(self):
         """This is a signal which should be triggered whenever the active frame has changed."""
+        return Event()
+
+    @cached_property
+    def threshold_changed(self):
+        """This signal will be triggered when the threshold is changed."""
+        return Event()
+
+    @cached_property
+    def morphology_changed(self):
+        """This signal will be triggered when the morphology image changed."""
         return Event()
 
     @property
@@ -157,22 +178,28 @@ class SamuROIData(object):
     @data.setter
     def data(self, d):
         self.__data = d
-        # clear meandata cache
-        if hasattr(self, "meandata"):
-            del self.meandata
 
-        # choose some appropriate new threshold value
-        self.threshold = numpy.percentile(self.meandata.flatten(), q=90)
         self.data_changed()
 
-    @cached_property
-    def meandata(self):
+    @property
+    def morphology(self):
         """
-        Provide pixel wise mean over the video data.
-        This is a lazy property, i.e. its value is calculated only if needed and then reused for repeated calls.
-        :type: 2d numpy array of floats.
+        An image which describes the static morphology. A good choice is to use the maximum projection over the non
+        normalized data.
+        :getter: obtain the morphology image.
+        :setter: set the morphology image, will trigger the :py:attr:`samuroi.SamuROIData.morphology_changed` event.
+        :type: 2D numpy array with same image shape as data.
         """
-        return numpy.mean(self.data, axis=-1)
+        return self.__morphology
+
+    @morphology.setter
+    def morphology(self, morphology):
+        if (morphology.shape != self.data.shape[0:2]):
+            raise Exception("Invalid morphology shape.")
+        self.__morphology = morphology
+        # choose some appropriate new threshold value
+        self.threshold = numpy.percentile(self.morphology.flatten(), q=90)
+        self.morphology_changed()
 
     @property
     def overlay(self):
@@ -201,7 +228,8 @@ class SamuROIData(object):
         """
         The threshold value controls the overlay mask.
         Higher threshold values will exclude larger areas.
-        Lower threshold values are less restrictive.
+        Lower threshold values are less restrictive. The threshold value will be initialized to the 90percentile of the
+        mean data.
 
         :getter: Get the present threshold value
         :setter: Set the threshold value. This will trigger a recalculation of :py:attr:`samuroi.SamuROIData.overlay` which in
@@ -213,11 +241,12 @@ class SamuROIData(object):
     @threshold.setter
     def threshold(self, t):
         self.__threshold = t
-        elevation_map = skimage.filters.sobel(self.meandata)
+        self.threshold_changed()
+        elevation_map = skimage.filters.sobel(self.morphology)
 
-        markers = numpy.zeros_like(self.meandata)
-        markers[self.meandata < self.threshold] = 1
-        markers[self.meandata > self.threshold * 1.1] = 2
+        markers = numpy.zeros_like(self.morphology)
+        markers[self.morphology < self.threshold] = 1
+        markers[self.morphology > self.threshold * 1.1] = 2
         segmentation = skimage.morphology.watershed(elevation_map, markers)
 
         self.overlay = segmentation == 2

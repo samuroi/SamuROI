@@ -20,11 +20,25 @@ class ToolBar(QtGui.QToolBar):
 
 
 class MaskToolbar(ToolBar):
-    def threshold_changed(self, value):
-        self.active_segmentation.threshold = value
+    def data_changed(self):
+        self.__threshold_base = self.active_segmentation.threshold
+
+    def threshold_changed(self):
+        self.threshold_spin_box.setValue(self.active_segmentation.threshold / self.__threshold_base)
+
+    def update_threshold(self, value):
+        self.active_segmentation.threshold = self.__threshold_base * value / 100.
 
     def __init__(self, parent, *args, **kwargs):
         super(MaskToolbar, self).__init__(parent=parent, *args, **kwargs)
+
+        # memorize the original threshold value and keep track of updates
+        self.__threshold_base = self.active_segmentation.threshold
+        # connect to get informed about theshold adaptions from user
+        self.active_segmentation.data_changed.append(self.data_changed)
+        # update the spinbox such that it reflects threshold changes e.g. via ipython
+        # fixme will lead to infinte signal loop
+        # self.active_segmentation.data_changed.append(self.threshold_changed)
 
         self.btn_toggle = self.addAction("Mask")
         self.btn_toggle.setToolTip("Toggle the mask overlay.")
@@ -32,12 +46,12 @@ class MaskToolbar(ToolBar):
         self.btn_toggle.setChecked(self.active_frame_canvas.show_overlay)
         self.btn_toggle.triggered.connect(lambda on: setattr(self.active_frame_canvas, "show_overlay", on))
 
-        self.threshold_spin_box = QtGui.QDoubleSpinBox(value=0)
-        self.threshold_spin_box.setRange(0., self.active_segmentation.threshold * 99.)
-        self.threshold_spin_box.setValue(self.active_segmentation.threshold)
+        self.threshold_spin_box = QtGui.QDoubleSpinBox(value=100.)
+        self.threshold_spin_box.setRange(0., 99999.)
+        self.threshold_spin_box.setValue(100.)
         self.threshold_spin_box.setAlignment(QtCore.Qt.Alignment(QtCore.Qt.AlignRight))
-        self.threshold_spin_box.setSingleStep(self.active_segmentation.threshold * .05)
-        self.threshold_spin_box.valueChanged.connect(self.threshold_changed)
+        self.threshold_spin_box.setSingleStep(.5)
+        self.threshold_spin_box.valueChanged.connect(self.update_threshold)
 
         self.addWidget(self.threshold_spin_box)
 
@@ -89,6 +103,7 @@ class SplitJoinToolbar(ToolBar):
         self.btn_merge_segment_right.setToolTip("Merge selected segment with next segment.")
         self.btn_merge_segment_right.setEnabled(False)
         # self.btn_merge_segment_right.triggered.connect(lambda: self.app.join_segments(next=True))
+
 
 #
 # class NavigationToolbar(ToolBar):
@@ -199,6 +214,7 @@ class ManageRoiToolbar(ToolBar):
 
 
 from ..util.postprocessors import *
+
 
 class PostProcessorToolbar(ToolBar):
     def update_posprocessor(self):

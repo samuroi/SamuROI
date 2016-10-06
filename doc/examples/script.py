@@ -24,9 +24,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     data = load_tif(args.filename)
+    morphology = numpy.max(data, axis=-1)
+
+    from samuroi.plugins.baseline import linbleeched_deltaF
+
+    data = linbleeched_deltaF(data)
 
     # show the gui for the filtered data
-    mainwindow = SamuROIWindow(data=data)
+    mainwindow = SamuROIWindow(data=data, morphology = morphology)
 
     for filename in args.swcfiles:
         swc = load_swc(filename)

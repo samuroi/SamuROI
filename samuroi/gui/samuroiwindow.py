@@ -25,7 +25,7 @@ class SamuROIWindow(QtGui.QMainWindow):
         with self.frame_widget.canvas.draw_on_exit(), self.tracedockwidget.canvas.draw_on_exit(), self.linescandockwidget.canvas.draw_on_exit():
             yield
 
-    def __init__(self, data):
+    def __init__(self, data, morphology=None):
         """
         Create and show the gui for data analysis.
         Args:
@@ -37,7 +37,7 @@ class SamuROIWindow(QtGui.QMainWindow):
         """
         QtGui.QMainWindow.__init__(self)
 
-        self.segmentation = SamuROIData(data)
+        self.segmentation = SamuROIData(data, morphology)
 
         # set window title
         self.setWindowTitle("SamuROI")

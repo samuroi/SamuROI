@@ -33,8 +33,8 @@ class FrameViewCanvas(CanvasBase):
         self.colorcycle = cycle('bgrcm')
 
         pmin, pmax = 10, 99
-        vmin, vmax = numpy.percentile(self.segmentation.meandata.flatten(), q=[pmin, pmax])
-        self.meanimg = self.axes.imshow(self.segmentation.meandata, cmap=matplotlib.cm.gray,
+        vmin, vmax = numpy.percentile(self.segmentation.morphology.flatten(), q=[pmin, pmax])
+        self.meanimg = self.axes.imshow(self.segmentation.morphology, cmap=matplotlib.cm.gray,
                                         interpolation='nearest', vmin=vmin, vmax=vmax)
 
         red_alpha_cm = matplotlib.cm.get_cmap('jet')
@@ -69,7 +69,7 @@ class FrameViewCanvas(CanvasBase):
     @property
     def rgba_overlay(self):
         # update overlay image
-        overlay = numpy.zeros(shape=self.segmentation.meandata.shape + (4,), dtype=float)
+        overlay = numpy.zeros(shape=self.segmentation.morphology.shape + (4,), dtype=float)
         overlay[..., 3] = numpy.logical_not(self.segmentation.overlay)
         return overlay
 
@@ -91,9 +91,9 @@ class FrameViewCanvas(CanvasBase):
 
     def on_data_changed(self):
         pmin, pmax = 10, 99
-        vmin, vmax = numpy.percentile(self.segmentation.meandata.flatten(), q=[pmin, pmax])
+        vmin, vmax = numpy.percentile(self.segmentation.morphology.flatten(), q=[pmin, pmax])
         self.meanimg.set_clim(vmin=vmin, vmax=vmax)
-        self.meanimg.set_data(self.segmentation.meandata)
+        self.meanimg.set_data(self.segmentation.morphology)
 
         # norm = matplotlib.colors.LogNorm(.001,1.)
         x, y, t = self.segmentation.data.shape
