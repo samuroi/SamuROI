@@ -18,13 +18,16 @@ class Branch(object):
     """
 
     def __init__(self, data=None, x=None, y=None, z=None, r=None):
-        super(Branch,self).__init__()
-        """Can be constructed as Branch(kind,x,y,z,r) or Branch(swc[start:end])."""
-        if data is not None:
-            self.data = data
-        else:
+        """
+        Can be constructed as Branch(kind,x,y,z,r) or Branch(swc[start:end]).
+        """
+        super(Branch, self).__init__()
+
+        if data is None:
             dtype = [('x', float), ('y', float), ('z', float), ('radius', float)]
             self.data = numpy.rec.fromarrays([x, y, z, r], dtype=dtype)
+        else:
+            self.data = data
 
     def __getitem__(self, item):
         return self.data[item]

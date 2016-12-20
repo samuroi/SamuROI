@@ -5,7 +5,7 @@ from ..util.branch import Branch
 
 class SegmentMask(Branch, Mask):
     def __init__(self, data, parent):
-        super(SegmentMask, self).__init__(data)
+        super(SegmentMask, self).__init__(data=data)
         self.parent = parent
 
         from .polygon import PolygonMask
@@ -43,7 +43,7 @@ class SegmentMask(Branch, Mask):
     def join(self, next=True):
         """
         Join two segments into one. Arguments:
-            next:    True or False, denote whether to join the segment with the preceeding or succeeding one.
+            next:    True or False, denote whether to join the segment with the preceding or succeeding one.
         """
 
         # the list of children of the parent
@@ -53,7 +53,7 @@ class SegmentMask(Branch, Mask):
         i = children.index(self)
 
         # select the slice of the two segments to join
-        # this will work event for i = 0,1,len(childrens)-1 and len(childrens)
+        # this will work event for i = 0,1,len(children)-1 and len(children)
         s = slice(i, i + 2) if next else slice(i - 1, i + 1)
 
         # we cant join next/previous, if there is no respective other segment

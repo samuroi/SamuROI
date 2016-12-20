@@ -14,10 +14,10 @@ class BranchMask(Branch, Mask):
     Provide functionality for splitting, joining and iterating over segments.
     """
 
-    def __init__(self, data=None, x=None, y=None, z=None, r=None, name=None):
+    def __init__(self, data=None, name=None):
         """Can be constructed as Branch(kind,x,y,z,r) or Branch(swc[start:end])."""
         Mask.__init__(self, name=name)
-        Branch.__init__(self, data, x, y, z, r)
+        Branch.__init__(self, data=data)
 
         self.segments = []
         """Child masks aka segments of the branch."""
@@ -59,26 +59,26 @@ class BranchMask(Branch, Mask):
 
     @staticmethod
     def from_hdf5(f):
-        from .polygon import PolygonMask
         if 'branches' in f:
             for name in f['branches'].keys():
                 data = f['branches/' + name + '/data'].value
                 branch = BranchMask(name=name, data=data)
                 if 'segments' in f['branches/' + name]:
                     for childname in f['branches/' + name + '/segments'].keys():
-                        child = PolygonMask(name=childname,
-                                            outline=f['branches/' + name + '/segments/' + childname + '/outline'].value)
+                        child = SegmentMask(parent=branch,
+                                            data=f['branches/' + name + '/segments/' + childname + '/data'].value)
+                        child.name = childname
                         branch.children.append(child)
                 yield branch
 
     def move(self, offset):
-        """Move the branch and remove all its children."""
+        """Move the branch and all its children."""
 
-        new_x = self.data.x + offset[0]
-        new_y = self.data.y + offset[1]
+        new_x = self.data['x'] + offset[0]
+        new_y = self.data['y'] + offset[1]
 
         dtype = [('x', float), ('y', float), ('z', float), ('radius', float)]
-        self.data = numpy.rec.fromarrays([new_x, new_y, self.data.z, self.data.radius], dtype=dtype)
+        self.data = numpy.rec.fromarrays([new_x, new_y, self.data['z'], self.data['radius']], dtype = dtype)
 
         from .polygon import PolygonMask
         self.__polygon = PolygonMask(outline=self.outline)
@@ -95,13 +95,13 @@ class BranchMask(Branch, Mask):
         .. note::
             One can either provide a `nsegments` or `length`.
 
-        Spliting of a branch will modify the :py:attr:`samuroi.masks.branch.BranchMask.children` attribute
+        Splitting of a branch will modify the :py:attr:`samuroi.masks.branch.BranchMask.children` attribute
         and hence trigger a :py:attr:`samuroi.masks.branch.BranchMask.changed` event.
 
         :param nsegments: the number of segments.
         :param length: the length of each segment (the last segment will have the remainder of modulo division).
-        :param k: smoothnes parameter for spline interpolation
-        :param s: smoothnes parameter for spline interpolation
+        :param k: smoothness parameter for spline interpolation
+        :param s: smoothness parameter for spline interpolation
         """
         branches = Branch.split(self, nsegments=nsegments, length=length, k=k, s=s)
         self.segments = [SegmentMask(data=b.data, parent=self) for b in branches]
@@ -111,7 +111,7 @@ class BranchMask(Branch, Mask):
         """
         Calculate the trace for all children and return a 2D array of traces.
         :param data: the data to apply on.
-        :param mask: some addiotional overlay mask
+        :param mask: some additional overlay mask
         :return: 2D numpy array holding traces for all children
         """
         return numpy.row_stack((child(data, mask) for child in self.segments))
