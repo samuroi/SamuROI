@@ -3,7 +3,7 @@ import numpy
 
 def template_matching(data, kernel, threshold):
     """
-    threshold values ususall should be in the range 1-5 for reasonable results.
+    Threshold values usually should be in the range 1-5 for reasonable results.
     Input $\mathbf{y}$ and $\mathbf{e}$ are two vectors, the normalized(todo: what means normalized?) template that should be used for matching and the data vector. Some intermediate values are:
 
     $$\overline{e} = \frac{1}{K}\sum_k e_k $$
@@ -14,7 +14,7 @@ def template_matching(data, kernel, threshold):
 
     $$\chi_n^2(S,C)=\sum_K\left[y_{n+k} - (S e_k +C)\right]^2$$
 
-    W.r.t. the variables $S$ and $C$. According to (ClementsBekkers, App. I)[1] the result is:
+    W.r.t. the variables $S$ and $C$. According to (ClementsBekkers, Appendix  I)[1] the result is:
 
     $$S_n = \frac{\sum_k e_k y_{n+k}-1/K \sum_k e_k \sum_k y_{n+k}}{\sum e_k^2-1/K \sum_k e_k \sum_k e_k} = \frac{\sum_k e_k y_{n+k}-K\overline{e}\ \overline{y_n}}{\sum e_k^2-K\overline{e}^2} = $$
 
@@ -32,6 +32,8 @@ def template_matching(data, kernel, threshold):
 
     [1] http://dx.doi.org/10.1016%2FS0006-3495(97)78062-7
     """
+    if len(data) <= len(kernel):
+        raise Exception("Data length needs to exceed kernel length.")
 
     # use shortcuts as in formulas above
     y = data
@@ -47,13 +49,17 @@ def template_matching(data, kernel, threshold):
     # the sum over e^2 (scalar<)
     sum_ee = numpy.sum(e ** 2)
 
+    # convolution mode
+    # mode = 'full' # yields output of length N+M-1
+    mode = 'same' # yields output of length max(M,N)
+
     # the sum over blocks of y (vector of size N)
-    sum_y = numpy.convolve(y, numpy.ones_like(e), mode='same')
+    sum_y = numpy.convolve(y, numpy.ones_like(e), mode=mode)
 
     # the sum over blocks of y*y (vector of size N)
-    sum_yy = numpy.convolve(y ** 2, numpy.ones_like(e), mode='same')
+    sum_yy = numpy.convolve(y ** 2, numpy.ones_like(e), mode=mode)
     # the sum_k  e_k y_{n+k}
-    sum_ey = numpy.convolve(y, e, mode='same')
+    sum_ey = numpy.convolve(y, e, mode=mode)
 
     # the optimal scaling factor
     s_n = (sum_ey - sum_e * sum_y / N) / (sum_ee - sum_e * sum_e / N)
