@@ -118,16 +118,7 @@ class FindEventsMenu(QtGui.QMenu):
             #
             # mask.events[result.algorithm]
 
-        # todo: remove this
-        import matplotlib.pyplot as plt
-        # open a threshold plot for the selected masks
-        for index in self.parent().roiselectionmodel.selectedIndexes():
-            item = index.internalPointer()
-            # check if the selection is a parent mask
-            if item.mask is not None:
-                print(item.mask)
-                plt.figure()
-                plt.plot(item.mask.events.crit)
+
 
     def on_tm_biexponential(self):
         dlg = BiExpParameterDialog(self)
