@@ -54,6 +54,58 @@ also iterate through all masks of a certain type like this:
    for bm in doc.masks[BranchMask]:
       print bm
 
+Since masks are stored in a set, the cannot be retrieved by a specific index, i.e. the following wont work:
+
+.. code-block:: python
+
+   # iterate over all branch masks
+   first_mask = doc.masks[0] # ERROR, cannot use [0] to get first of an iterable
+   first_branch = doc.masks[BranchMask][0] # ERROR, same as above
+
+Instead masks can be identified by their name:
+
+.. warning:: There can be multiple masks with the same name. It is up to the user to ensure that the name is unique.
+
+.. code-block:: python
+
+   # iterate over all branch masks
+   from samuroi.masks.branchmask import BranchMask
+   for bm in doc.masks[BranchMask]:
+      if bm.name == 'my_special_branch':
+         break
+
+   print bm.name # yeah, I found my mask
+
+Alternatively:
+
+.. code-block:: python
+
+   mybranch = next(branch for branch in doc.masks[BranchMask] if branch.name == 'my_special_branch')
+
+
+Extracting a trace from a mask
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+In SamuROI, the masks itself are distinct objects which do not know about data and overlay. Hence calculate the trace of
+for a mask, one has to combine the 3D dataset, the 2D overlay mask and the geometric information from the mask itself.
+Because the geometric information is different for different kind of masks (e.g. Circle, Polygon, or Segmentation) this
+combination is done by the mask itself (:py:meth:`samuroi.mask.Mask.__call__`):
+
+.. code-block:: python
+
+   # get some mask
+   mybranch = next(doc.masks[BranchMask])
+
+   # combine data, overlay and geometry
+   trace = mybranch(doc.data,doc.overlay)
+
+   # thats it, trace now is a 1D numpy array, we can e.g. plot it with matplotlib
+   plt.figure()
+   plt.plot(trace)
+
+
+Internally, the SamuROI widgets do the very same thing to plot their data.
+
+
 Adding and removing masks
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -111,13 +163,10 @@ trace such that it has a zero mean over time.
   # change the postprocessor
   doc.postprocessor = zero_mean_postprocessor
 
-Pretty easy, huh? Let's try something more advanced:
+Pretty easy, huh? For something more advanced, an event detection postprocessor and best fit overlay, have a look at :ref:`script-example`!
 
-# todo build event detection postprocessor.
-
-
-
-
+Extracting traces from masks
+----------------------------
 
 
 .. _script-example:
