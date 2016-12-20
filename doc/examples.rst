@@ -106,6 +106,26 @@ combination is done by the mask itself (:py:meth:`samuroi.mask.Mask.__call__`):
 Internally, the SamuROI widgets do the very same thing to plot their data.
 
 
+Extracting detected events
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+Running the event detection will add detection results to all mask. Having a detection result does not mean, that there is an
+event. The detection result only describes the outcome of the event detection. For the implemented event detection based on
+template matching (`Clements, J.M. Bekkers <http://dx.doi.org/10.1016/S0006-3495(97)78062-7>`_) this result hold the optimal scaling and offset values,
+aswell as the "matching criterion" curve. This data can be accessed via:
+
+.. code-block:: python
+
+   # get some mask
+   mybranch = next(doc.masks[BranchMask])
+
+   # print the detection results
+   print mybranch.events # This only works, if one has done an event detection run before!
+
+   # maybe plot the matching criterion ?
+   plt.figure()
+   plt.plot(mybranch.events.crit)
+
+
 Adding and removing masks
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -164,10 +184,6 @@ trace such that it has a zero mean over time.
   doc.postprocessor = zero_mean_postprocessor
 
 Pretty easy, huh? For something more advanced, an event detection postprocessor and best fit overlay, have a look at :ref:`script-example`!
-
-Extracting traces from masks
-----------------------------
-
 
 .. _script-example:
 
