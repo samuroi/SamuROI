@@ -104,9 +104,14 @@ class BranchMaskCreator(MaskCreator):
                     mask = CircleMask(center=[self.x[0] + 0.5, self.y[0] + 0.5], radius=self.r[0])
                 else:
                     import numpy
+                    dtype = [('x', float), ('y', float), ('z', float), ('radius', float)]
+                    x = numpy.array(self.x) + 0.5
+                    y = numpy.array(self.y) + 0.5
+                    z = [0 for i in self.x]
+                    r = self.r
+                    data = numpy.rec.fromarrays([x, y, z, r], dtype=dtype)
                     # shift by 0.5 to compensate for pixel offset in imshow
-                    mask = BranchMask(x=numpy.array(self.x) + 0.5, y=numpy.array(self.y) + 0.5,
-                                      z=[0 for i in self.x], r=self.r)
+                    mask = BranchMask(data=data)
                 self.x, self.y, self.r = [], [], []
                 self.notify(mask)
                 self.enabled = False

@@ -33,6 +33,21 @@ class Branch(object):
         return self.data[item]
 
     @property
+    def x(self):
+        """The x coordinates of the center points along the branch. (1D array)"""
+        return self.data['x']
+
+    @property
+    def y(self):
+        """The y coordinates of the center points along the branch. (1D array)"""
+        return self.data['y']
+
+    @property
+    def radius(self):
+        """The radius around the anchor points along the branch. (1D array)"""
+        return self.data['radius']
+
+    @property
     def corners(self):
         """
         Nx2x2 array, where N is the number of corners.

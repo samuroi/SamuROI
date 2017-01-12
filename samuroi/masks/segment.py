@@ -16,11 +16,11 @@ class SegmentMask(Branch, Mask):
 
     def move(self, offset):
         """Move the segment don't trigger any event since this will be handled by the parent branch object."""
-        new_x = self.data.x + offset[0]
-        new_y = self.data.y + offset[1]
+        new_x = self.x + offset[0]
+        new_y = self.y + offset[1]
         import numpy
         dtype = [('x', float), ('y', float), ('z', float), ('radius', float)]
-        self.data = numpy.rec.fromarrays([new_x, new_y, self.data.z, self.data.radius], dtype=dtype)
+        self.data = numpy.rec.fromarrays([new_x, new_y, self.data['z'], self.radius], dtype=dtype)
 
         from .polygon import PolygonMask
         self.__polygon = PolygonMask(outline=self.outline)
