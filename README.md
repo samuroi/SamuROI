@@ -13,7 +13,7 @@ SamuROI requires the following python packages:
 - opencv
 - h5py
 - scikit-image
-- pyqt
+- pyqt4 (make sure to tell conda to install pyqt4 via `conda install pyqt=4` )
 - pillow
 
 ## Installation
