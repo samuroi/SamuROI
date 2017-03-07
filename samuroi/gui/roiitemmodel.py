@@ -82,16 +82,17 @@ class RootItem(TreeItem):
         TreeItem.__init__(self, model=model)
 
         # keep track of type to child index mapping
-        self.type2index = {}  # todo rename to better name
+        self.type2group = {}  # todo rename to better name
 
     def add(self, mask):
         """return the added item"""
         # check if we have a group for the type of the mask
-        if type(mask) not in self.type2index:
-            group = RoiGroupItem(model=self.model, parent=self, name=str(type(mask).__name__))
-            self.type2index[type(mask)] = TreeItem.add(self, group)
+        if type(mask) not in self.type2group:
+            group = self.type2group[type(mask)] = RoiGroupItem(model=self.model, parent=self,
+                                                               name=str(type(mask).__name__))
+            TreeItem.add(self, group)
         # call on_added on child item
-        index = self.type2index[type(mask)]
+        index = self.row(self.type2group[type(mask)])
         self.child(index).add(mask)
 
     def find(self, mask):
@@ -113,13 +114,13 @@ class RootItem(TreeItem):
 
     def remove(self, mask):
         # remove the mask from the respective child item
-        index = self.type2index[type(mask)]
+        index = self.row(self.type2group[type(mask)])
         self.child(index).remove(mask)
 
         # check if there are still other items within the group
         if len(self.child(index)) == 0:
             TreeItem.remove(self, self.child(index))
-            del self.type2index[type(mask)]
+            del self.type2group[type(mask)]
 
 
 class RoiGroupItem(TreeItem):
@@ -150,7 +151,7 @@ class RoiGroupItem(TreeItem):
             if node.mask is mask:
                 return TreeItem.remove(self, node)
         # mask needs to be one of the direct child nodes
-        assert(False)
+        assert (False)
 
     def __repr__(self):
         return self.__name
@@ -196,10 +197,10 @@ class RoiItem(TreeItem):
         assert (mask is self.mask)
 
         # remove all children
-        TreeItem.remove(self,slice= slice(None))
+        TreeItem.remove(self, slice=slice(None))
 
         # add all children
-        if(hasattr(self.mask,"children")):
+        if (hasattr(self.mask, "children")):
             TreeItem.add(self, [RoiItem(parent=self, model=self.model) for child in self.mask.children])
             for item, mask in zip(self.children, self.mask.children):
                 item.mask = mask
@@ -240,7 +241,7 @@ class RoiTreeModel(QtCore.QAbstractItemModel):
         # all other fields can't be edited
         return QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled
 
-    def find(self,mask):
+    def find(self, mask):
         """ find the tree index of the given mask"""
         return self.root.find(mask).index
 
