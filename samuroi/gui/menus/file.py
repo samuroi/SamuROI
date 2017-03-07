@@ -73,13 +73,23 @@ class FileMenu(QtGui.QMenu):
             filename = str(dialog.selectedFiles()[0])
             if '.' not in filename:
                 filename = filename + '.h5'
-            self.app.segmentation.save_hdf5(filename=filename,
-                                            branches=dialog.chk_branches.isChecked(),
-                                            pixels=dialog.chk_pixel.isChecked(),
-                                            polygons=dialog.chk_freehand.isChecked(),
-                                            circles=dialog.chk_circles.isChecked(),
-                                            data=dialog.chk_data.isChecked(),
-                                            traces=dialog.chk_traces.isChecked(),
-                                            mask=dialog.chk_mask.isChecked())
+            try:
+                self.app.segmentation.save_hdf5(filename=filename,
+                                                branches=dialog.chk_branches.isChecked(),
+                                                pixels=dialog.chk_pixel.isChecked(),
+                                                polygons=dialog.chk_freehand.isChecked(),
+                                                circles=dialog.chk_circles.isChecked(),
+                                                data=dialog.chk_data.isChecked(),
+                                                traces=dialog.chk_traces.isChecked(),
+                                                mask=dialog.chk_mask.isChecked())
+            except RuntimeError as e:
+                from PyQt4.QtGui import QMessageBox
+                msg = QMessageBox()
+                msg.setWindowTitle("Saving to hdf5 failed")
+                msg.setIcon(QMessageBox.Warning)
+                msg.setText(e.message)
+                msg.setStandardButtons(QMessageBox.Ok)
+                msg.exec_()
+
         else:
             print "cancel"
