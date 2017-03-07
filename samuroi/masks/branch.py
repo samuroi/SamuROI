@@ -8,7 +8,7 @@ from ..util.branch import Branch
 from .segment import SegmentMask
 
 
-class BranchMask(Branch, Mask):
+class BranchMask(Mask):
     """
     Represent a dendrite branch, or part of a dendrite branch.
     Provide functionality for splitting, joining and iterating over segments.
@@ -16,8 +16,8 @@ class BranchMask(Branch, Mask):
 
     def __init__(self, data=None, name=None):
         """Can be constructed as Branch(kind,x,y,z,r) or Branch(swc[start:end])."""
-        Mask.__init__(self, name=name)
-        Branch.__init__(self, data=data)
+        super(BranchMask, self).__init__(name=name)
+        self.branch = Branch(data=data)
 
         self.segments = []
         """Child masks aka segments of the branch."""
@@ -27,6 +27,20 @@ class BranchMask(Branch, Mask):
 
         self.changed = Event()
         """The event which will be triggered when the branch mask was changed."""
+
+    @property
+    def outline(self):
+        """
+        :return: return the outline of the wrapped :py:class:`samuroi.util.branch.Branch` object.
+        """
+        return self.branch.outline
+
+    @property
+    def data(self):
+        """
+        :return: return the data of the wrapped :py:class:`samuroi.util.branch.Branch` object.
+        """
+        return self.branch.data
 
     @property
     def children(self):
@@ -78,7 +92,7 @@ class BranchMask(Branch, Mask):
         new_y = self.data['y'] + offset[1]
 
         dtype = [('x', float), ('y', float), ('z', float), ('radius', float)]
-        self.data = numpy.rec.fromarrays([new_x, new_y, self.data['z'], self.data['radius']], dtype = dtype)
+        self.branch.data = numpy.rec.fromarrays([new_x, new_y, self.data['z'], self.data['radius']], dtype=dtype)
 
         from .polygon import PolygonMask
         self.__polygon = PolygonMask(outline=self.outline)
@@ -103,7 +117,7 @@ class BranchMask(Branch, Mask):
         :param k: smoothness parameter for spline interpolation
         :param s: smoothness parameter for spline interpolation
         """
-        branches = Branch.split(self, nsegments=nsegments, length=length, k=k, s=s)
+        branches = self.branch.split(nsegments=nsegments, length=length, k=k, s=s)
         self.segments = [SegmentMask(data=b.data, parent=self) for b in branches]
         self.changed(self)
 

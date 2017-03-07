@@ -3,24 +3,39 @@ from .mask import Mask
 from ..util.branch import Branch
 
 
-class SegmentMask(Branch, Mask):
+class SegmentMask(Mask):
     def __init__(self, data, parent):
-        super(SegmentMask, self).__init__(data=data)
+        super(SegmentMask, self).__init__()
+        self.branch = Branch(data=data)
         self.parent = parent
 
         from .polygon import PolygonMask
         self.__polygon = PolygonMask(outline=self.outline)
+
+    @property
+    def outline(self):
+        """
+        :return: return the outline of the wrapped :py:class:`samuroi.util.branch.Branch` object.
+        """
+        return self.branch.outline
+
+    @property
+    def data(self):
+        """
+        :return: return the data of the wrapped :py:class:`samuroi.util.branch.Branch` object.
+        """
+        return self.branch.data
 
     def __call__(self, data, mask):
         return self.__polygon(data, mask)
 
     def move(self, offset):
         """Move the segment don't trigger any event since this will be handled by the parent branch object."""
-        new_x = self.x + offset[0]
-        new_y = self.y + offset[1]
+        new_x = self.data['x'] + offset[0]
+        new_y = self.data['y'] + offset[1]
         import numpy
         dtype = [('x', float), ('y', float), ('z', float), ('radius', float)]
-        self.data = numpy.rec.fromarrays([new_x, new_y, self.data['z'], self.radius], dtype=dtype)
+        self.branch.data = numpy.rec.fromarrays([new_x, new_y, self.data['z'], self.data['radius']], dtype=dtype)
 
         from .polygon import PolygonMask
         self.__polygon = PolygonMask(outline=self.outline)
@@ -33,7 +48,7 @@ class SegmentMask(Branch, Mask):
 
         # split segment and convert new branch objects into segments
         subsegments = [SegmentMask(data=s.data, parent=self.parent)
-                       for s in Branch.split(self, nsegments=nsegments, length=length, k=k, s=s)]
+                       for s in self.branch.split(nsegments=nsegments, length=length, k=k, s=s)]
 
         # insert new items into list at correct position, i.e. replace self
         self.parent.segments[i:i + 1] = subsegments
