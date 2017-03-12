@@ -10,6 +10,7 @@ Subpackages
     samuroi.masks
     samuroi.plugins
     samuroi.util
+    samuroi.event
 
 The SamuROIWindow class
 -----------------------

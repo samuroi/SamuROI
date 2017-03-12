@@ -120,7 +120,7 @@ def bandstop(data, fs, start, stop, order = 3):
 
 def linbleeched_F0(data):
     """
-    Calculate a linear fit (y(t)=m*t+y0) for each pixel, which is assumed to correct for bleeching effects.
+    Calculate a linear fit (:math:`y(t)=m t+y_0)` for each pixel, which is assumed to correct for bleeching effects.
 
     :param data: he video data of shape (M,N,T).
     :return: tuple (m,y0) with two images each with shape (M,N).

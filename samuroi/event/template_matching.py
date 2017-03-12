@@ -1,34 +1,53 @@
 import numpy
 
 
-def template_matching(data, kernel, threshold):
+class ClementsBekkersResult(object):
     """
-    Threshold values usually should be in the range 1-5 for reasonable results.
-    Input $\mathbf{y}$ and $\mathbf{e}$ are two vectors, the normalized(todo: what means normalized?) template that should be used for matching and the data vector. Some intermediate values are:
+    Collection of results of least squares optimization for template matching.
+    """
+    def __init__(self, indices, crit, s, c, threshold, kernel):
+        self.indices = indices
+        """the indices of detected events, since zero padding is used for convolution, all indices need to get shifted by N/2 where N is the length of the kernel"""
+        self.crit = crit
+        """the criterion vector  used for comparison with the threshold"""
+        self.s = s
+        """the vector of optimal scaling parameters"""
+        self.c = c
+        """the vector of optimal offset parameters"""
+        self.threshold = threshold
+        """the threshold used for detection"""
+        self.kernel = kernel
+        """the kernel that was used for matching"""
 
-    $$\overline{e} = \frac{1}{K}\sum_k e_k $$
 
-    $$\overline{y_n} =  \frac{1}{K}\sum_K y_{n+k}$$
+def template_matching(data, kernel, threshold):
+    r"""
+    .. note::
+            Threshold values usually should be in the range 1 to 5 for reasonable results.
+
+    Input :math:`\mathbf{y}` and :math:`\mathbf{e}` are two vectors, the normalized(todo: what means normalized?)
+    template that should be used for matching and the data vector. Some intermediate values are:
+
+    :math:`\overline{e} = \frac{1}{K}\sum_k e_k`
+
+    :math:`\overline{y_n} = \frac{1}{K}\sum_k y_{n+k}`
 
     The goal is to minimize the least squares distance:
 
-    $$\chi_n^2(S,C)=\sum_K\left[y_{n+k} - (S e_k +C)\right]^2$$
+    :math:`\chi_n^2(S,C)=\sum_K\left[y_{n+k} - (S e_k +C)\right]^2`
 
-    W.r.t. the variables $S$ and $C$. According to (ClementsBekkers, Appendix  I)[1] the result is:
+    W.r.t. the variables :math:`S` and :math:`C`. According to (ClementsBekkers, Appendix  I)[1] the result is:
 
-    $$S_n = \frac{\sum_k e_k y_{n+k}-1/K \sum_k e_k \sum_k y_{n+k}}{\sum e_k^2-1/K \sum_k e_k \sum_k e_k} = \frac{\sum_k e_k y_{n+k}-K\overline{e}\ \overline{y_n}}{\sum e_k^2-K\overline{e}^2} = $$
+    :math:`S_n = \frac{\sum_k e_k y_{n+k}-1/K \sum_k e_k \sum_k y_{n+k}}{\sum e_k^2-1/K \sum_k e_k \sum_k e_k} = \frac{\sum_k e_k y_{n+k}-K\overline{e}\ \overline{y_n}}{\sum e_k^2-K\overline{e}^2}`
 
     and
-    $$C_n = \overline{y_n} -S_n \overline{e}$$
 
+    :math:`C_n = \overline{y_n} -S_n \overline{e}`
 
-    returns a named tuple:
-        indices : the indices of detected events, since we use zero padding for convolution, all indices need to get shifted by N/2 where N is the length of the kernel
-        crit: the criterion vector  used for comparison with the threshold
-        s: the vector of optimal scaling parameters
-        c: the vector of optimal offset parameters
-        threshold: the threshold used for detection
-        kernel: the kernel that was used for matching
+    :param data: 1D numpy array with the timeseries to analyze, above denoted as :math:`\mathbf{y}`
+    :param kernel: 1D numpy array with the template to use, above denoted as :math:`\mathbf{e}`
+    :param threshold: scalar value usually between 4 to 5.
+    :return: A result object :py:class:`samuroi.event.template_matching.ClementsBekkersResult`
 
     [1] http://dx.doi.org/10.1016%2FS0006-3495(97)78062-7
     """
@@ -51,7 +70,7 @@ def template_matching(data, kernel, threshold):
 
     # convolution mode
     # mode = 'full' # yields output of length N+M-1
-    mode = 'same' # yields output of length max(M,N)
+    mode = 'same'  # yields output of length max(M,N)
 
     # the sum over blocks of y (vector of size N)
     sum_y = numpy.convolve(y, numpy.ones_like(e), mode=mode)
