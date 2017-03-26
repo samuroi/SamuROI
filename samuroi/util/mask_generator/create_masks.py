@@ -10,27 +10,27 @@ class MaskGenerator(object):
     """
     Parent class for generating masklists and manually correcting them
     """
-    def __init__(self, blob_image, raw_image, com=None):
+    def __init__(self, blob_image, raw_image, center_of_mass=None):
 
         self.raw_image = raw_image
         self.blob_image = blob_image
 
-        if com is None:
-            self.com = get_blob_centers(self.blob_image)
+        if center_of_mass is None:
+            self.center_of_mass = get_blob_centers(self.blob_image)
         else:
-            self.com = com
+            self.center_of_mass = center_of_mass
 
-        self.putative_nuclei_image, _ = remove_small_blobs(self.blob_image, self.com)  # remove non-overlapping centers
+        self.putative_nuclei_image, _ = remove_small_blobs(self.blob_image, self.center_of_mass)  # remove non-overlapping centers
 
     def append_com(self, c):
-        x = self.com.tolist()
+        x = self.center_of_mass.tolist()
         x.append(c)
-        self.com = np.array(x)
+        self.center_of_mass = np.array(x)
 
     def remove_com(self, c):
-        x = self.com.tolist()
+        x = self.center_of_mass.tolist()
         x.remove(c)
-        self.com = np.array(x)
+        self.center_of_mass = np.array(x)
 
     def update(self):
         pass
@@ -43,19 +43,19 @@ class DonutCells(MaskGenerator):
     """
     Child class to handle GCaMP data - i.e. donut shaped rois, with a dark nucleus
     """
-    def __init__(self, raw_image, putative_nuclei_image, putative_somata_image, com=None):
-        super(DonutCells, self).__init__(putative_nuclei_image, raw_image, com)
+    def __init__(self, raw_image, putative_nuclei_image, putative_somata_image, center_of_mass=None):
+        super(DonutCells, self).__init__(putative_nuclei_image, raw_image, center_of_mass)
         self.putative_somata_image = putative_somata_image
         self.putative_nuclei_image = ndimage.binary_fill_holes(self.putative_nuclei_image)
         self.watershed_image = np.logical_or(self.putative_nuclei_image, self.putative_somata_image)
-        self.segmentation_labels = calculate_distance(self.watershed_image, self.com)
-        self.labelled_nuclei = calculate_distance(self.putative_nuclei_image, self.com)
-        self.roi_masks = create_roi_masks(self.com, self.putative_nuclei_image, self.putative_somata_image)
+        self.segmentation_labels = calculate_distance(self.watershed_image, self.center_of_mass)
+        self.labelled_nuclei = calculate_distance(self.putative_nuclei_image, self.center_of_mass)
+        self.roi_masks = create_roi_masks(self.center_of_mass, self.putative_nuclei_image, self.putative_somata_image)
 
     def update(self):
-        self.putative_nuclei_image, _ = remove_small_blobs(self.putative_nuclei_image, self.com)
-        self.segmentation_labels = calculate_distance(self.watershed_image, self.com)
-        self.roi_masks = create_roi_masks(self.com, self.putative_nuclei_image, self.putative_somata_image)
+        self.putative_nuclei_image, _ = remove_small_blobs(self.putative_nuclei_image, self.center_of_mass)
+        self.segmentation_labels = calculate_distance(self.watershed_image, self.center_of_mass)
+        self.roi_masks = create_roi_masks(self.center_of_mass, self.putative_nuclei_image, self.putative_somata_image)
 
 
 class BlobCells(MaskGenerator):
@@ -66,7 +66,7 @@ class BlobCells(MaskGenerator):
     def __init__(self, segmentation_layer, raw_image):
         super(BlobCells, self).__init__(segmentation_layer, raw_image)
         self.watershed_image = self.putative_nuclei_image
-        self.segmentation_labels = calculate_distance(self.watershed_image, self.com)
+        self.segmentation_labels = calculate_distance(self.watershed_image, self.center_of_mass)
         self.roi_mask_list = self.create_roi_masks()
 
     def create_roi_masks(self):
