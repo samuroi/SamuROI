@@ -86,7 +86,7 @@ def get_centers_of_mass_from_blobs(segmentation_layer, iterations=3):
 
     ::param segmentation_layer: NxM ndarray image mask of all target objects
     ::param iterations: threshold for removal of small non-target objects
-    ::returns centers_of_mass: a np ndarray of x,y coordinates for the center of each target object
+    ::return centers_of_mass: a np ndarray of x,y coordinates for the center of each target object
 
     """
 
@@ -153,6 +153,11 @@ def calculate_distance(centers_of_mass, image):
 def blob_labels(centers_of_mass, blob_image):
     """
     label nuclei with segmentation - so labels are in the same order as the outer layer
+
+    :param list centers_of_mass: centers of target blobs/cells
+    :param np.array blob_image: image of the target cells, or nuclei of cells
+    :return segmented_blobs: a labelled image where each index is a different cell
+    :return distance: image where each pixel's value is related to how far away from a blob center it is
     """
 
     image = np.abs(blob_image-1)
@@ -169,7 +174,9 @@ def blob_labels(centers_of_mass, blob_image):
 def create_roi_masks(centers_of_mass, putative_nuclei_image, putative_somata_image=None, radius=3):
         """
         create roi masks for the outer segment of the cell (i.e. soma)
-        ::param radius: limits the size of the mask
+        
+        :param radius: limits the size of the mask
+        :return roi_mask_list: a list of pixels for each cell, for further analysis
         """
         roi_mask_list = []
 
