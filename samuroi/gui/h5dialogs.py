@@ -108,7 +108,7 @@ class H5LoadDialog(H5Dialog):
         self.chk_circles.setChecked("circles" in f)
         self.chk_data.setChecked("data" in f)
         self.chk_mask.setChecked("mask" in f)
-        self.chk_segmentation.setEnabled("segmentation" in f)
+        self.chk_segmentation.setChecked("segmentation" in f)
 
         # write stuff to disc
         f.close()
