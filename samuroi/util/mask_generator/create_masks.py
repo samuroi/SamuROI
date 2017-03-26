@@ -8,7 +8,7 @@ from skimage import segmentation
 
 class MaskGenerator(object):
     """
-    Parent class for generating masklists and manually correcting them
+    Parent class for generating mask lists and manually correcting them
     """
     def __init__(self, blob_image, raw_image, centers_of_mass=None):
 
@@ -174,7 +174,7 @@ def blob_labels(centers_of_mass, blob_image):
 def create_roi_masks(centers_of_mass, putative_nuclei_image, putative_somata_image=None, radius=3):
         """
         create roi masks for the outer segment of the cell (i.e. soma)
-        
+
         :param radius: limits the size of the mask
         :return roi_mask_list: a list of pixels for each cell, for further analysis
         """
