@@ -16,7 +16,7 @@ class MaskGenerator(object):
         self.blob_image = blob_image
 
         if center_of_mass is None:
-            self.center_of_mass = get_blob_centers(self.blob_image)
+            self.center_of_mass = get_centers_of_mass_from_blobs(self.blob_image)
         else:
             self.center_of_mass = center_of_mass
 
@@ -80,7 +80,7 @@ class BlobCells(MaskGenerator):
         return roi_mask_list
 
 
-def get_blob_centers(segmentation_layer, iterations=3):
+def get_centers_of_mass_from_blobs(segmentation_layer, iterations=3):
     """
     Determine the centers of each object in an image
 
