@@ -31,19 +31,19 @@ class ComCorrector(object):
         self.image = self.ax1.imshow(raw_image, cmap='gray')
         self.vmin = self.image.get_clim()[0]
         self.vmax = self.image.get_clim()[1]
-        self.com_plot, = self.ax1.plot(self.mask_generator.com[:, 1], self.mask_generator.com[:, 0],
-                                       'o', color='r', picker=5)
+        self.centers_of_mass_plot, = self.ax1.plot(self.mask_generator.centers_of_mass[:, 1],
+                                                   self.mask_generator.centers_of_mass[:, 0], 'o', color='r', picker=5)
         if image_2 is not None:
             self.ax2 = self.fig.add_subplot(222, sharex=self.ax1, sharey=self.ax1)
             self.ax2.imshow(image_2)
-            self.com_plot2, = self.ax2.plot(self.mask_generator.com[:, 1], self.mask_generator.com[:, 0],
-                                           'o', color='r')
+            self.centers_of_mass_plot2, = self.ax2.plot(self.mask_generator.centers_of_mass[:, 1],
+                                                        self.mask_generator.centers_of_mass[:, 0], 'o', color='r')
             self.plot_masks(self.ax2)
 
         if image_3 is not None:
             self.ax3 = self.fig.add_subplot(223, sharex=self.ax1, sharey=self.ax1)
-            self.com_plot3, = self.ax3.plot(self.mask_generator.com[:, 1], self.mask_generator.com[:, 0],
-                                           'o', color='r')
+            self.centers_of_mass_plot3, = self.ax3.plot(self.mask_generator.centers_of_mass[:, 1],
+                                                        self.mask_generator.centers_of_mass[:, 0], 'o', color='r')
             self.ax3.imshow(image_3)
 
         self.ax4 = self.fig.add_subplot(224, sharex=self.ax1, sharey=self.ax1)
@@ -64,7 +64,7 @@ class ComCorrector(object):
     def onclick(self, event):
         if self.shift_is_held:
             try:
-                self.mask_generator.append_com([event.ydata, event.xdata])
+                self.mask_generator.append_center_of_mass([event.ydata, event.xdata])
                 self.update_graph()
             except Exception as e:
                 print e
@@ -74,16 +74,19 @@ class ComCorrector(object):
             thisline = event.artist
             xdata = thisline.get_xdata()
             ydata = thisline.get_ydata()
-            self.mask_generator.remove_com([ydata[event.ind], xdata[event.ind]])
+            self.mask_generator.remove_center_of_mass([ydata[event.ind], xdata[event.ind]])
             self.update_graph()
         except Exception as e:
             print e
 
     def update_graph(self):
         try:
-            self.com_plot.set_data(self.mask_generator.com[:, 1], self.mask_generator.com[:, 0])
-            self.com_plot2.set_data(self.mask_generator.com[:, 1], self.mask_generator.com[:, 0])
-            self.com_plot3.set_data(self.mask_generator.com[:, 1], self.mask_generator.com[:, 0])
+            self.centers_of_mass_plot.set_data(self.mask_generator.centers_of_mass[:, 1],
+                                               self.mask_generator.centers_of_mass[:, 0])
+            self.centers_of_mass_plot2.set_data(self.mask_generator.centers_of_mass[:, 1],
+                                                self.mask_generator.centers_of_mass[:, 0])
+            self.centers_of_mass_plot3.set_data(self.mask_generator.centers_of_mass[:, 1],
+                                                self.mask_generator.cocenters_of_massm[:, 0])
             self.fig.canvas.draw()
         except Exception as e:
             print e
@@ -96,9 +99,12 @@ class ComCorrector(object):
                 self.mask_generator.update()
                 self.ax2.cla()
                 self.ax2.imshow(self.mask_generator.segmentation_labels*self.mask_generator.putative_somata_image)
-                self.ax2.plot(self.mask_generator.com[:, 1], self.mask_generator.com[:, 0], 'o', color='r')
-                self.com_plot.set_data(self.mask_generator.com[:, 1], self.mask_generator.com[:, 0])
-                self.com_plot.set_data(self.mask_generator.com[:, 1], self.mask_generator.com[:, 0])
+                self.ax2.plot(self.mask_generator.centers_of_mass[:, 1],
+                              self.mask_generator.centers_of_mass[:, 0], 'o', color='r')
+                self.centers_of_mass_plot.set_data(self.mask_generator.centers_of_mass[:, 1],
+                                                   self.mask_generator.centers_of_mass[:, 0])
+                self.centers_of_mass_plot.set_data(self.mask_generator.centers_of_mass[:, 1],
+                                                   self.mask_generator.centers_of_mass[:, 0])
                 self.plot_masks(self.ax2)
                 self.fig.canvas.draw()
             except Exception as e:
