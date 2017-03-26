@@ -167,7 +167,7 @@ class SamuROIData(object):
     @property
     def segmentationmasks(self):
         """
-        :return: A generator object that allows iteration over all polygon masks in the document.
+        :return: A generator object that allows iteration over all segmentation masks in the document.
         """
         from .masks.segmentation import Segmentation
         if Segmentation not in self.masks.types():
@@ -388,6 +388,7 @@ class SamuROIData(object):
         :param circles: flag whether to read the circle masks if some are stored in file.
         :param polygons: flag whether to read the polygon masks if some are stored in file.
         :param data: flag whether to read the data if it is stored in file.
+        :param segmentations: flag whether to read the segmentations if it is stored in file.
         """
         from .masks.pixel import PixelMask
         from .masks.branch import BranchMask
