@@ -106,9 +106,9 @@ def get_centers_of_mass_from_blobs(segmentation_layer, iterations=3):
 def remove_small_blobs(segmentation_layer, com):
     """
     removes non-overlapping pixel-islands and cell centres (coms)
-    ::param segmentation_layer: NxM ndarray image mask of all target objects
-    ::param com: a np ndarray of x,y coordinates for the center of each target object
-    ::return updated_labels:
+    :param segmentation_layer: NxM ndarray image mask of all target objects
+    :param com: a np ndarray of x,y coordinates for the center of each target object
+    :return updated_labels:
     """
     labels, label_number = ndimage.label(segmentation_layer)  # label all pixel islands
     updated_labels = np.zeros_like(labels)
@@ -129,8 +129,10 @@ def remove_small_blobs(segmentation_layer, com):
 
 def calculate_distance(image, com):
     """
-    ::param image: a binarised image to be segmented
-    ::param com: the centres that will define the maxima of the watershed segmentation
+    :param image: a binarised image to be segmented
+    :param com: the centres that will define the maxima of the watershed segmentation
+    :return segmentation_labels: a labelled image/segmentation, where each index belongs do a different center of mass
+
     """
     # random walk segmentation of 2D image-mask array
     distance = ndimage.distance_transform_edt(np.abs(image-1))
