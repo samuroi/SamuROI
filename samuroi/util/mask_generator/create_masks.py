@@ -127,8 +127,11 @@ def remove_small_blobs(segmentation_layer, com):
     return updated_labels, updated_com
 
 
-def calculate_distance(image, com):
+def calculate_distance(com, image):
     """
+    takes the centers of each blob, and an image to be segmented. Divides the image according to the center of masses
+    by a random walk
+
     :param image: a binarised image to be segmented
     :param com: the centres that will define the maxima of the watershed segmentation
     :return segmentation_labels: a labelled image/segmentation, where each index belongs do a different center of mass
