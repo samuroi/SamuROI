@@ -10,14 +10,7 @@ import subprocess
 """These are for running ilastik in headless mode within Python"""
 
 
-def get_ilastik_project_path():
-    for f in os.listdir("./"):
-        if f[-4:] == '.ilp':
-            return f
-        raise IOError('ilastik project file not found')
-
-
-def ilastik_segment(data, ilastik_path, ilastik_project_path=None):
+def ilastik_segment(data, ilastik_path, ilastik_project_path):
     """
     Convert image data into a segmentation using ilastik. It requires that you have created a project file
     specifically for the type of images you want to classify. If this function fails, you should first verify that
@@ -36,9 +29,6 @@ def ilastik_segment(data, ilastik_path, ilastik_project_path=None):
         >>> simple_segmentation = ilastik_segment(data, ilastik_path, ilastik_project_path)
         >>>
     """
-
-    if ilastik_project_path is None:  # defaults to any .ilp file it finds in the home directory
-        ilastik_project_path = get_ilastik_project_path()
 
     tmp_data = tempfile.NamedTemporaryFile()  # temporary file is created
     np.save(tmp_data.name, data)  # input data is saved because ilastik works with files
