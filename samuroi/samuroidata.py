@@ -309,6 +309,7 @@ class SamuROIData(object):
         :param polygons:
         :param data: flag whether data should be stored in file.
         :param traces:
+        :param segmentations:
         :return:
         """
 
