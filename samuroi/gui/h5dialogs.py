@@ -21,6 +21,7 @@ class H5Dialog(QtGui.QFileDialog):
         self.chk_traces = QtGui.QCheckBox("Traces")
         self.chk_data = QtGui.QCheckBox("Data")
         self.chk_mask = QtGui.QCheckBox("Threshold Mask")
+        self.chk_segmentation = QtGui.QCheckBox("Segmentation")
 
         layout.addWidget(self.chk_branches)
         layout.addWidget(self.chk_freehand)
@@ -29,7 +30,7 @@ class H5Dialog(QtGui.QFileDialog):
         layout.addWidget(self.chk_traces)
         layout.addWidget(self.chk_mask)
         layout.addWidget(self.chk_data)
-
+        layout.addWidget(self.chk_segmentation)
 
 class H5SaveDialog(H5Dialog):
     def __init__(self, *args, **kwargs):
@@ -45,6 +46,7 @@ class H5SaveDialog(H5Dialog):
         self.chk_traces.setChecked(True)
         self.chk_data.setChecked(False)
         self.chk_mask.setChecked(True)
+        self.chk_segmentation.setChecked(True)
 
         self.chk_branches.setToolTip("Store the branch rois in the hdf5 file.")
         self.chk_freehand.setToolTip("Store the freehand rois in the hdf5 file.")
@@ -54,6 +56,7 @@ class H5SaveDialog(H5Dialog):
         self.chk_data.setToolTip("Store the 3D video data the hdf5 file.\n " + \
                                  "This will significantly increase the filesize.")
         self.chk_mask.setToolTip("Store the threshold value and binary mask in the hdf5 file.")
+        self.chk_segmentation.setToolTip("Store your segmentations")
 
 
 class H5LoadDialog(H5Dialog):
@@ -70,6 +73,7 @@ class H5LoadDialog(H5Dialog):
         self.chk_traces.setEnabled(False)
         self.chk_data.setEnabled(False)
         self.chk_mask.setEnabled(False)
+        self.chk_segmentation.setEnabled(False)
 
         self.chk_branches.setToolTip("Load the branch rois from the hdf5 file.")
         self.chk_freehand.setToolTip("Load the freehand rois from the hdf5 file.")
@@ -80,7 +84,7 @@ class H5LoadDialog(H5Dialog):
         self.chk_data.setToolTip("Load the 3D video data from the hdf5 file.\n " + \
                                  "This will discard the currently selected dataset.")
         self.chk_mask.setToolTip("Load the threshold value and binary mask from the hdf5 file.")
-
+        self.chk_segmentation.setToolTip("Load your segmentations")
 
         self.currentChanged.connect(self.update_checkboxes)
 
@@ -96,6 +100,7 @@ class H5LoadDialog(H5Dialog):
         self.chk_circles.setEnabled("circles" in f)
         self.chk_data.setEnabled("data" in f)
         self.chk_mask.setEnabled("mask" in f)
+        self.chk_segmentation.setEnabled("segmentation" in f)
 
         self.chk_branches.setChecked("branches" in f)
         self.chk_freehand.setChecked("polygons" in f)
@@ -103,6 +108,7 @@ class H5LoadDialog(H5Dialog):
         self.chk_circles.setChecked("circles" in f)
         self.chk_data.setChecked("data" in f)
         self.chk_mask.setChecked("mask" in f)
+        self.chk_segmentation.setEnabled("segmentation" in f)
 
         # write stuff to disc
         f.close()

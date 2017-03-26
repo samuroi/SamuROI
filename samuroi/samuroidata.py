@@ -165,6 +165,17 @@ class SamuROIData(object):
             yield i
 
     @property
+    def segmentationmasks(self):
+        """
+        :return: A generator object that allows iteration over all polygon masks in the document.
+        """
+        from .masks.segmentation import Segmentation
+        if Segmentation not in self.masks.types():
+            return
+        for i in self.masks[Segmentation]:
+            yield i
+
+    @property
     def data(self):
         """
         The main video data onto which all masks get applied.
@@ -281,7 +292,7 @@ class SamuROIData(object):
         self.postprocessor_changed()
 
     def save_hdf5(self, filename, mask=True, pixels=True, branches=True, circles=True, polygons=True, data=False,
-                  traces=True):
+                  traces=True, segmentations=True):
         """
         The structure of the hdf5 file will be as follows:
 
@@ -327,6 +338,10 @@ class SamuROIData(object):
             for m in self.branchmasks:
                 m.to_hdf5(f)
 
+        if segmentations:
+            for m in self.segmentationmasks:
+                m.to_hdf5(f)
+
         if traces:
             f.create_group('traces')
             for m in self.masks:
@@ -362,7 +377,7 @@ class SamuROIData(object):
                 mask = CircleMask(center=b[['x', 'y']][0], radius=b['radius'][0])
             self.masks.add(mask)
 
-    def load_hdf5(self, filename, mask=True, pixels=True, branches=True, circles=True, polygons=True, data=True):
+    def load_hdf5(self, filename, mask=True, pixels=True, branches=True, circles=True, polygons=True, data=True, segmentations=True):
         """
         Load data that from hd5 file.
 
@@ -378,6 +393,7 @@ class SamuROIData(object):
         from .masks.branch import BranchMask
         from .masks.circle import CircleMask
         from .masks.polygon import PolygonMask
+        from .masks.segmentation import Segmentation
 
         import h5py
         with h5py.File(filename, mode='r') as f:
@@ -408,4 +424,8 @@ class SamuROIData(object):
 
             if branches:
                 for m in BranchMask.from_hdf5(f):
+                    self.masks.add(m)
+
+            if segmentations:
+                for m in Segmentation.from_hdf5(f):
                     self.masks.add(m)
