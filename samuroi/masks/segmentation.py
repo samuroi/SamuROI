@@ -10,7 +10,7 @@ class Segmentation(Mask):
     """
 
     class Child(Mask):
-        """A proxy object that implements the mask interface but is just a facade around one index of the segmentation."""
+        """A proxy object that implements the mask interface but is just a facade around one index of the segmentation"""
 
         def __init__(self, parent, index):
             Mask.__init__(self, name=parent.name + ": " + str(index))
@@ -73,3 +73,5 @@ class Segmentation(Mask):
                 data = f['segmentations/' + name + '/data'].value
                 seg = Segmentation(name=name, data=data)
                 yield seg
+
+

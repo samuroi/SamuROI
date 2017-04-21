@@ -188,7 +188,7 @@ class FrameViewCanvas(CanvasBase):
         return artist
 
     def create_segmentation_artist(self, mask, color=None):
-        segmentation_alpha = 0.3
+        segmentation_alpha = 0.7
 
         conv = matplotlib.colors.ColorConverter()
         overlay = numpy.zeros(shape=mask.data.shape + (4,), dtype=float)
@@ -205,7 +205,7 @@ class FrameViewCanvas(CanvasBase):
         artist.mask = mask
 
         def set_selected(self, a):
-            overlay[..., 3] = numpy.logical_not(mask.data == 0) * (0.5 if a else segmentation_alpha)
+            overlay[..., 3] = numpy.logical_not(mask.data == 0) * (0.9 if a else segmentation_alpha)
             artist.set_array(overlay)
 
         artist.set_selected = types.MethodType(set_selected, artist)
@@ -224,7 +224,7 @@ class FrameViewCanvas(CanvasBase):
 
             def set_selected(self, a):
                 if a:
-                    overlay[self.mask.y,self.mask.x, 3] = .5
+                    overlay[self.mask.y,self.mask.x, 3] = .9
                 else:
                     overlay[self.mask.y, self.mask.x, 3] = segmentation_alpha
                 self.artist.set_array(overlay)
