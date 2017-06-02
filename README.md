@@ -17,6 +17,7 @@ SamuROI installation was tested on:
     - `conda install conda-build` 
     - `conda install pyqt=4` 
     - `conda install cached-property` 
+    
     Finally, opencv does not ship official packages for all operation systems.
     On windows try `conda install -c menpo opencv=2.4.11`, on linux and mac try `conda install opencv`.
     If the opencv installation fails, SamuROI should still work, but the image stabilization will not be supported.
