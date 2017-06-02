@@ -1,5 +1,15 @@
 import numpy
-import cv2
+
+try:
+    import cv2
+except ImportError as e:
+    print "WARNING: Importing opencv (cv2) failed."
+    print "Without opencv image stabilization is not supported."
+    print "If you are on windows you can try to install opencv with:"
+    print " conda install -c menpo opencv=2.4.11"
+    print "On linux/mac try:"
+    print " conda install opencv=2.4.11"
+    raise e
 
 
 lk_params = dict( winSize  = (50, 50),
