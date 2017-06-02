@@ -1,43 +1,27 @@
 [<img src="https://readthedocs.org/projects/samuroi/badge/?version=latest">](http://samuroi.readthedocs.io/en/latest/?badge=latest)
 
 # SamuROI
-If you use this software, please cite:
-You can find the documentation at: http://samuroi.readthedocs.io/en/latest/
-
-## Requirements
-SamuROI requires the following python packages:
-- python
-- numpy
-- matplotlib
-- cached-property
-- opencv
-- h5py
-- scikit-image
-- pyqt4 (make sure to tell conda to install pyqt4 via `conda install pyqt=4` )
-- pillow
+You can find the API documentation and examples at: http://samuroi.readthedocs.io/en/latest/
 
 ## Installation
-### From source with conda (recommended)
- 1. Install the requirements listed above with the conda package manager:
+SamuROI installation was tested on:
+ - Windows7-64bit, newer windows should also work.
+ - Ubuntu 16.04 LTS
  
-  `conda install <dependency>`
- 2. Clone SamuROI git repository:
+### Development installation with conda
+ 1. Download and install [anaconda](https://www.continuum.io/downloads) 
+ 2. Download and extract or git clone SamuROI
+ 3. Install dependencies
  
-  `git clone https://github.com/aolsux/SamuROI.git`
- 3. Tell conda about the downloaded git repository. This will e.g. add the source directory to python path.
- 
-    `conda develop /path/to/local/git/repo`
+    Open a terminal to first install SamuROI dependencies. Text in `this font` represents terminal commands.
+    - `conda install conda-build` 
+    - `conda install pyqt=4` 
+    - `conda install cached-property` 
+    Finally, opencv does not ship official packages for all operation systems.
+    On windows try `conda install -c menpo opencv=2.4.11`, on linux and mac try `conda install opencv`.
+    If the opencv installation fails, SamuROI should still work, but the image stabilization will not be supported.
+ 4. Install SamuROI as a conda develop package: `conda develop <path/to/samuroi>`. Here <path/to/samuroi> denotes the samuroi root directory where you can e.g. find this Readme.md file.
     
-    Unless you haven't specified a special directory for git to clone into, your `/path/to/local/git/repo` will just be `.SamuROI`.
-
-### Via conda package manager (hopefully comming soon)
-It is recommended to install SamuROI via the conda package manager, 
-since conda comes with packages for scikit-image, opencv and pyqt.
-`conda install samuroi`
-
-## Installation via pip
-To install SamuROI via pip make sure to satisfy the following dependencies
-manually:
-- opencv
-- scikit-image
-- pyqt
+### Via package manager (hopefully comming soon)
+We hope to support a conda package soon! Contributions including a travis-ci setup are highly appreciated.
+As there exist no official pip packages for opencv and pyqt, installation of SamuROI via pip is not officially supported.
