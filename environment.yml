@@ -1,0 +1,13 @@
+name: samuroi
+dependencies:
+  - python=2.7
+  - scikit-image=0.13
+  - pyqt=4
+  - numpy
+  - matplotlib
+  - h5py
+  - scikit-image
+  - pillow
+  - cached-property
+  - jupyter
+
