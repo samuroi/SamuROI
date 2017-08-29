@@ -1,7 +1,6 @@
 import numpy
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QDockWidget, QWidget, QHBoxLayout
+from PyQt4 import QtCore, QtGui
 
 from .canvasbase import CanvasBase
 
@@ -108,19 +107,20 @@ class TraceViewCanvas(CanvasBase):
             self.segmentation.active_frame = event.xdata
 
 
-class TraceViewDockWidget(QDockWidget):
+class TraceViewDockWidget(QtGui.QDockWidget):
     def __init__(self, name, parent, segmentation, selectionmodel):
         super(TraceViewDockWidget, self).__init__(name, parent)
 
         self.canvas = TraceViewCanvas(segmentation=segmentation, selectionmodel=selectionmodel)
 
-        from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
+        from PyQt4 import QtCore
+        from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT
         self.toolbar_navigation = NavigationToolbar2QT(self.canvas, self, coordinates=False)
-        self.toolbar_navigation.setOrientation(Qt.Vertical)
+        self.toolbar_navigation.setOrientation(QtCore.Qt.Vertical)
         self.toolbar_navigation.setFloatable(True)
 
-        self.widget = QWidget()
-        self.layout = QHBoxLayout()
+        self.widget = QtGui.QWidget()
+        self.layout = QtGui.QHBoxLayout()
         self.layout.addWidget(self.toolbar_navigation)
         self.layout.addWidget(self.canvas)
 
