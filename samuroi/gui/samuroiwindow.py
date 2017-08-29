@@ -1,14 +1,12 @@
 from contextlib import contextmanager
 
 import numpy
-
-from PyQt5.QtWidgets import QWidget, QDockWidget, QMainWindow, QVBoxLayout
-from PyQt5.QtCore import QItemSelectionModel, Qt
+from PyQt4 import QtCore, QtGui
 
 from ..samuroidata import SamuROIData
 
 
-class SamuROIWindow(QMainWindow):
+class SamuROIWindow(QtGui.QMainWindow):
     """
     The main class that is doing the event handling, organizes the gui and puts together the plot.
     """
@@ -37,21 +35,21 @@ class SamuROIWindow(QMainWindow):
             pmin,pmax: Percentiles for color range. I.e. the color range for mean and data will start at pmin %
                            and reach up to pmax %. Defaults to (10,99)
         """
-        QMainWindow.__init__(self)
+        QtGui.QMainWindow.__init__(self)
 
         self.segmentation = SamuROIData(data, morphology)
 
         # set window title
         self.setWindowTitle("SamuROI")
         # instantiate a widget, it will be the main one
-        self.setCentralWidget(QWidget(self))
+        self.setCentralWidget(QtGui.QWidget(self))
         # create a vertical box layout widget
-        self.vbl = QVBoxLayout(self.centralWidget())
+        self.vbl = QtGui.QVBoxLayout(self.centralWidget())
 
         # create itemmodel and selectionmodel for the masks
         from .roiitemmodel import RoiTreeModel
         self.roitreemodel = RoiTreeModel(rois=self.segmentation.masks, parent=self)
-        self.roiselectionmodel = QItemSelectionModel(self.roitreemodel)
+        self.roiselectionmodel = QtGui.QItemSelectionModel(self.roitreemodel)
 
         # create widget for frame
         from .widgets.frameview import FrameViewWidget
@@ -63,21 +61,21 @@ class SamuROIWindow(QMainWindow):
 
         from .widgets.rasterview import RasterViewDockWidget
         self.linescandockwidget = RasterViewDockWidget("RasterView", parent=self, segmentation=self.segmentation)
-        self.addDockWidget(Qt.TopDockWidgetArea, self.linescandockwidget)
+        self.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.linescandockwidget)
         # connect to selection to update linescan if selection allows to deduce a branch
         self.roiselectionmodel.selectionChanged.connect(self.on_selection_change)
 
         from .widgets.traceview import TraceViewDockWidget
         self.tracedockwidget = TraceViewDockWidget("TraceView", parent=self, segmentation=self.segmentation,
                                                    selectionmodel=self.roiselectionmodel)
-        self.addDockWidget(Qt.BottomDockWidgetArea, self.tracedockwidget)
+        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.tracedockwidget)
 
         from .roitree import RoiTreeWidget
-        self.roitreedockwidget = QDockWidget("TreeView", parent=self)
+        self.roitreedockwidget = QtGui.QDockWidget("TreeView", parent=self)
         self.roitreewidget = RoiTreeWidget(parent=self.roitreedockwidget, model=self.roitreemodel,
                                            selectionmodel=self.roiselectionmodel)
         self.roitreedockwidget.setWidget(self.roitreewidget)
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.roitreedockwidget)
+        self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.roitreedockwidget)
 
         from samuroi.gui.menus.file import FileMenu
         from samuroi.gui.menus.view import ViewMenu
