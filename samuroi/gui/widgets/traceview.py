@@ -44,7 +44,7 @@ class TraceViewCanvas(CanvasBase):
     def update_traces(self):
         tmax = self.segmentation.data.shape[-1]
         x = numpy.linspace(0, tmax, tmax, False, dtype=int)
-        for mask, line in self.__traces.iteritems():
+        for mask, line in self.__traces.items():
             tracedata = self.segmentation.postprocessor(mask(self.segmentation.data, self.segmentation.overlay))
             line.set_data(x, tracedata)
         self.axes.relim()
@@ -69,7 +69,7 @@ class TraceViewCanvas(CanvasBase):
                     del self.__artist[item.mask]
                     del self.__traces[item.mask]
         from itertools import cycle
-        cycol = cycle('bgrcmk').next
+        cycol = cycle('bgrcmk').__next__
 
         for range in selected:
             for index in range.indexes():

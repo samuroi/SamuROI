@@ -74,11 +74,11 @@ class BranchMask(Mask):
     @staticmethod
     def from_hdf5(f):
         if 'branches' in f:
-            for name in f['branches'].keys():
+            for name in list(f['branches'].keys()):
                 data = f['branches/' + name + '/data'].value
                 branch = BranchMask(name=name, data=data)
                 if 'segments' in f['branches/' + name]:
-                    for childname in f['branches/' + name + '/segments'].keys():
+                    for childname in list(f['branches/' + name + '/segments'].keys()):
                         child = SegmentMask(parent=branch,
                                             data=f['branches/' + name + '/segments/' + childname + '/data'].value)
                         child.name = childname

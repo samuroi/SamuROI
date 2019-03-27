@@ -38,7 +38,7 @@ class MaskSet(MutableSet):
         return Event()
 
     def __len__(self):
-        return sum(len(value) for value in self.__items.itervalues())
+        return sum(len(value) for value in iter(self.__items.values()))
 
     def __contains__(self, elem):
         if type(elem) not in self.__items:
@@ -46,7 +46,7 @@ class MaskSet(MutableSet):
         return elem in self.__items[type(elem)]
 
     def __iter__(self):
-        for val in self.__items.itervalues():
+        for val in self.__items.values():
             for i in val:
                 yield i
                 # loop over children if the mask has children:)
@@ -91,4 +91,4 @@ class MaskSet(MutableSet):
 
         :return: An iterable object of types.
         """
-        return self.__items.keys()
+        return list(self.__items.keys())

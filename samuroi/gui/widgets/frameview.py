@@ -132,7 +132,7 @@ class FrameViewCanvas(CanvasBase):
         with self.draw_on_exit():
             for child in getattr(parent, "children", []):
                 if not hasattr(child, "color"):
-                    child.color = self.colorcycle.next()
+                    child.color = next(self.colorcycle)
                 self.create_outlined_artist(mask=child, color=child.color)
 
     def remove_child_artists(self, parent):
@@ -142,7 +142,7 @@ class FrameViewCanvas(CanvasBase):
         with self.draw_on_exit():
             # gather all former children of the changed mask in a list
             old_children = []
-            for mask, artist in self.__artists.iteritems():
+            for mask, artist in self.__artists.items():
                 # check if the mask has parent and the parent is the mask which was modified
                 if hasattr(mask, "parent") and mask.parent is parent:
                     old_children.append(mask)
@@ -195,7 +195,7 @@ class FrameViewCanvas(CanvasBase):
         # set color for all children
         for child in mask.children:
             if not hasattr(child, "color"):
-                child.color = self.colorcycle.next()
+                child.color = next(self.colorcycle)
             overlay[child.y, child.x] = conv.to_rgba(child.color)
 
         # set background pixels to opaque and foreground pixels to low alpha
@@ -249,7 +249,7 @@ class FrameViewCanvas(CanvasBase):
             }
             func = mapping[type(mask)]
             if not hasattr(mask, "color"):
-                mask.color = self.colorcycle.next()
+                mask.color = next(self.colorcycle)
             func(mask=mask, color=mask.color)
             if hasattr(mask, "changed"):
                 mask.changed.append(self.on_mask_changed)

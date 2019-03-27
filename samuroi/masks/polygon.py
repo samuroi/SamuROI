@@ -38,7 +38,7 @@ class PolygonMask(Mask):
     @staticmethod
     def from_hdf5(f):
         if 'polygons' in f:
-            for name, dataset in f['polygons'].iteritems():
+            for name, dataset in f['polygons'].items():
                 yield PolygonMask(name=name, outline=dataset.value)
 
     @property

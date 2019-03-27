@@ -251,7 +251,7 @@ class RoiTreeModel(QtCore.QAbstractItemModel):
             return False
         if role == QtCore.Qt.EditRole:
             name = str(value.toPyObject())
-            print name
+            print(name)
             index.internalPointer().mask.name = name
             self.dataChanged.emit(index, index)
             return True

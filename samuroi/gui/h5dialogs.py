@@ -6,7 +6,7 @@ class H5Dialog(QtGui.QFileDialog):
         super(H5Dialog, self).__init__(*args, **kwargs)
 
         self.setNameFilter("hdf5 Files (*.h5 *.hdf *.hdf5)")
-        if "directory" not in kwargs.keys():
+        if "directory" not in list(kwargs.keys()):
             self.setDirectory('.')
 
         # get the grid layout of the dialog

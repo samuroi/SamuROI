@@ -83,7 +83,7 @@ class RasterViewCanvas(CanvasBase):
                 self.axes.set_ylim(nsegments, 0)
 
                 from itertools import cycle
-                cycol = cycle('bgrcm').next
+                cycol = cycle('bgrcm').__next__
                 eventsx = []
                 eventsy = []
                 colors = []

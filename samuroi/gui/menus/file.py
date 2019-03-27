@@ -31,7 +31,7 @@ class FileMenu(QtGui.QMenu):
     def load_hdf5(self):
         dialog = H5LoadDialog(caption="Open hdf5 file...")
         if dialog.exec_():
-            print dialog.selectedFiles()[0]
+            print(dialog.selectedFiles()[0])
 
             filename = str(dialog.selectedFiles()[0])
             if '.' not in filename:
@@ -44,7 +44,7 @@ class FileMenu(QtGui.QMenu):
                                             data=dialog.chk_data.isChecked(),
                                             mask=dialog.chk_mask.isChecked())
         else:
-            print "cancel"
+            print("cancel")
 
     def load_swc(self):
         fileName = QtGui.QFileDialog.getOpenFileName(self.parent(),
@@ -68,7 +68,7 @@ class FileMenu(QtGui.QMenu):
         dialog = H5SaveDialog(caption="Save hdf5 file...")
 
         if dialog.exec_():
-            print dialog.selectedFiles()[0]
+            print(dialog.selectedFiles()[0])
 
             filename = str(dialog.selectedFiles()[0])
             if '.' not in filename:
@@ -92,4 +92,4 @@ class FileMenu(QtGui.QMenu):
                 msg.exec_()
 
         else:
-            print "cancel"
+            print("cancel")

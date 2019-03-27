@@ -69,7 +69,7 @@ class Segmentation(Mask):
     @staticmethod
     def from_hdf5(f):
         if 'segmentations' in f:
-            for name in f['segmentations'].keys():
+            for name in list(f['segmentations'].keys()):
                 data = f['segmentations/' + name + '/data'].value
                 seg = Segmentation(name=name, data=data)
                 yield seg

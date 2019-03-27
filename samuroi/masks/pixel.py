@@ -28,7 +28,7 @@ class PixelMask(Mask):
     @staticmethod
     def from_hdf5(f):
         if 'pixels' in f:
-            for name, dataset in f['pixels'].iteritems():
+            for name, dataset in f['pixels'].items():
                 yield PixelMask(name=name, x=dataset.value[:, 0], y=dataset.value[:, 1])
 
     def __call__(self, data, mask):

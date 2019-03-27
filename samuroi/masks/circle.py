@@ -53,7 +53,7 @@ class CircleMask(Mask):
     @staticmethod
     def from_hdf5(f):
         if 'circles' in f:
-            for name, dataset in f['circles'].iteritems():
+            for name, dataset in f['circles'].items():
                 center = dataset.value[0:2]
                 radius = dataset.value[2]
                 yield CircleMask(name=name, center=center, radius=radius)

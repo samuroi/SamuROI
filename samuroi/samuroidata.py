@@ -404,7 +404,7 @@ class SamuROIData(object):
                     raise Exception("Overlay data not stored in given hd5 file.")
                 self.threshold = f['overlay'].attrs['threshold']
                 if (self.overlay != f['overlay']).any():
-                    print "Warning: overlay threshold does not match with stored binary mask!"
+                    print("Warning: overlay threshold does not match with stored binary mask!")
                 self.overlay = f['overlay'].value
 
             if data:
