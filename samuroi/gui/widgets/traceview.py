@@ -1,6 +1,7 @@
 import numpy
 
-from PyQt4 import QtCore, QtGui
+from PyQt5 import QtCore, QtGui
+from PyQt5.QtWidgets import QDockWidget, QWidget, QHBoxLayout
 
 from .canvasbase import CanvasBase
 
@@ -44,7 +45,7 @@ class TraceViewCanvas(CanvasBase):
     def update_traces(self):
         tmax = self.segmentation.data.shape[-1]
         x = numpy.linspace(0, tmax, tmax, False, dtype=int)
-        for mask, line in self.__traces.iteritems():
+        for mask, line in self.__traces.items():
             tracedata = self.segmentation.postprocessor(mask(self.segmentation.data, self.segmentation.overlay))
             line.set_data(x, tracedata)
         self.axes.relim()
@@ -69,7 +70,7 @@ class TraceViewCanvas(CanvasBase):
                     del self.__artist[item.mask]
                     del self.__traces[item.mask]
         from itertools import cycle
-        cycol = cycle('bgrcmk').next
+        cycol = cycle('bgrcmk').__next__
 
         for range in selected:
             for index in range.indexes():
@@ -107,20 +108,20 @@ class TraceViewCanvas(CanvasBase):
             self.segmentation.active_frame = event.xdata
 
 
-class TraceViewDockWidget(QtGui.QDockWidget):
+class TraceViewDockWidget(QDockWidget):
     def __init__(self, name, parent, segmentation, selectionmodel):
         super(TraceViewDockWidget, self).__init__(name, parent)
 
         self.canvas = TraceViewCanvas(segmentation=segmentation, selectionmodel=selectionmodel)
 
-        from PyQt4 import QtCore
+        from PyQt5 import QtCore
         from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT
         self.toolbar_navigation = NavigationToolbar2QT(self.canvas, self, coordinates=False)
         self.toolbar_navigation.setOrientation(QtCore.Qt.Vertical)
         self.toolbar_navigation.setFloatable(True)
 
-        self.widget = QtGui.QWidget()
-        self.layout = QtGui.QHBoxLayout()
+        self.widget = QWidget()
+        self.layout = QHBoxLayout()
         self.layout.addWidget(self.toolbar_navigation)
         self.layout.addWidget(self.canvas)
 

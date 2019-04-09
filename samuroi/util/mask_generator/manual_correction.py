@@ -3,7 +3,7 @@ __author__ = 'stephenlenzi'
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
-import create_masks
+from . import create_masks
 
 
 class ComCorrector(object):
@@ -67,7 +67,7 @@ class ComCorrector(object):
                 self.mask_generator.append_center_of_mass([event.ydata, event.xdata])
                 self.update_graph()
             except Exception as e:
-                print e
+                print(e)
 
     def onpick(self, event):
         try:
@@ -77,7 +77,7 @@ class ComCorrector(object):
             self.mask_generator.remove_center_of_mass([ydata[event.ind], xdata[event.ind]])
             self.update_graph()
         except Exception as e:
-            print e
+            print(e)
 
     def update_graph(self):
         try:
@@ -89,7 +89,7 @@ class ComCorrector(object):
                                                 self.mask_generator.cocenters_of_mass[:, 0])
             self.fig.canvas.draw()
         except Exception as e:
-            print e
+            print(e)
 
     def on_key_press(self, event):
         if event.key == 'shift':
@@ -108,7 +108,7 @@ class ComCorrector(object):
                 self.plot_masks(self.ax2)
                 self.fig.canvas.draw()
             except Exception as e:
-                print e
+                print(e)
 
         if event.key == "t":
                 self.vmin += 2000

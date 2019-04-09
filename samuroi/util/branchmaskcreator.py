@@ -88,8 +88,8 @@ class BranchMaskCreator(MaskCreator):
                 self.__update_artist()
                 self.update()
             elif event.key == 'z':
-                print event
-                print dir(event)
+                print(event)
+                print(dir(event))
                 self.r = self.r[:-1]
                 self.x = self.x[:-1]
                 self.y = self.y[:-1]

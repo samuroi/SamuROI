@@ -1,0 +1,18 @@
+language: python
+dist: xenial # required for Python >= 3.7
+python:
+- '3.6'
+- '3.7'
+- nightly
+script:
+  - echo "there are no tests yet:-("
+install:
+- python setup.py sdist
+deploy:
+  distributions: sdist
+  on:
+    tags: true
+  provider: pypi
+  user: enigma@nbubu.de
+  password:
+    secure: Pz7z0E/A35SebEiyCklAlncLBxpfNiwbcXVRCrvbx7RYtU9DIIz5uJuPiM/yVbnZ+JinPlHeSHVrJLGx8e/8ufOQYZhIPfQfO3YazOd7yz1irhu5vu2lKCbShlggfvAPoxcb84rTojZll/h3N1GXmw3mPqMm5Z60NCxvV2dd/GpOLghl4qrqZiuQHUE3OQVelO6iNei5SL2YiO2CneP7nwErGG/3Hu4I6NlP0Vfn9oxfcI7ayUJsqCYkpxbBNdkjYooK7kiSosvButKSf18S2FkMMoNtgdguYpzBnSAmp2RVas9Zw3QPaHoeWPq+gCw3Jw57V1ORNFcnFGw6xHrdLLKZE5mqSrm63GjQgR4vq7zXfZDvN0Y9NJxvno5oGx0h9LSrR8nhVMD7z/vEGgFzBpq7/LZspvJmVgWa9g2RiTNj/mdgs4m8Yie4Ys05nk7O4ZUVWVKmyF9QcsEGKdlZF9hWJtmoseWfZDEtxpDqWjoveJ9jTX8tvcQld/c54+YtdL4ZrNVtrrPhH0Q04UML2RtF4icOUKnFehNAsxpg/KMXzz615YF/ZK03toyFi5+lXJT6ha59GUiDRLR7EnPGNIrf+uEcNmMTHnGBZublefcNRAr7vQQ4JxyLupMFmoIvLQ7jMrNHRIiiA3Q8uxW21BcRjOIK5mmaoxksK+kWL90=

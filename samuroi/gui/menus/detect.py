@@ -1,9 +1,7 @@
-from __future__ import print_function
-
-from PyQt4 import QtGui
+from PyQt5.QtWidgets import QDialog, QPushButton, QDoubleSpinBox, QLabel, QGridLayout, QMenu, QAction
 
 
-class BiExpParameterDialog(QtGui.QDialog):
+class BiExpParameterDialog(QDialog):
     def __init__(self, parent):
         super(BiExpParameterDialog, self).__init__(parent)
 
@@ -14,32 +12,32 @@ class BiExpParameterDialog(QtGui.QDialog):
         self.tau2 = 1.9
         self.tau1 = 2
 
-        self.layout = QtGui.QGridLayout(self)
+        self.layout = QGridLayout(self)
 
         # self.layout.addWidget(QtGui.QLabel("Baseline"), 0, 0)
         # self.layout.addItem(QtGui.QLabel("Delay"))
         # forcing a delay may improve false positive rate, since it requires "silent phase" before the event.
         row = 0
-        self.layout.addWidget(QtGui.QLabel("tau1 (slow decay)"), row, 0)
+        self.layout.addWidget(QLabel("tau1 (slow decay)"), row, 0)
         row += 1
-        self.layout.addWidget(QtGui.QLabel("tau2 (fast rise)"), row, 0)
+        self.layout.addWidget(QLabel("tau2 (fast rise)"), row, 0)
         row += 1
         # self.layout.addWidget(QtGui.QLabel("amplitude"), row, 0)
         # row += 1
-        self.layout.addWidget(QtGui.QLabel("threshold"), row, 0)
+        self.layout.addWidget(QLabel("threshold"), row, 0)
 
         # self.text_baseline = QtGui.QDoubleSpinBox(self)
         # self.text_baseline.setMinimum(-999)
         # self.text_baseline.setMaximum(999)
         # self.text_baseline.setSingleStep(.01)
 
-        self.text_tau1 = QtGui.QDoubleSpinBox(self)
+        self.text_tau1 = QDoubleSpinBox(self)
         self.text_tau1.setMinimum(0)
         self.text_tau1.setMaximum(999)
         self.text_tau1.setSingleStep(.01)
         self.text_tau1.setValue(self.tau1)
 
-        self.text_tau2 = QtGui.QDoubleSpinBox(self)
+        self.text_tau2 = QDoubleSpinBox(self)
         self.text_tau2.setMinimum(0)
         self.text_tau2.setMaximum(999)
         self.text_tau2.setSingleStep(.01)
@@ -50,7 +48,7 @@ class BiExpParameterDialog(QtGui.QDialog):
         # self.text_amplitude.setMaximum(999)
         # self.text_amplitude.setSingleStep(.01)
 
-        self.text_threshold = QtGui.QDoubleSpinBox(self)
+        self.text_threshold = QDoubleSpinBox(self)
         self.text_threshold.setMinimum(0)
         self.text_threshold.setMaximum(199)
         self.text_threshold.setSingleStep(.01)
@@ -67,8 +65,8 @@ class BiExpParameterDialog(QtGui.QDialog):
         self.layout.addWidget(self.text_threshold, row, 1)
         row += 1
 
-        self.okbutton = QtGui.QPushButton("OK")
-        self.cancelbutton = QtGui.QPushButton("Cancel")
+        self.okbutton = QPushButton("OK")
+        self.cancelbutton = QPushButton("Cancel")
 
         self.layout.addWidget(self.okbutton, row, 0)
         self.layout.addWidget(self.cancelbutton, row, 1)
@@ -76,13 +74,13 @@ class BiExpParameterDialog(QtGui.QDialog):
         self.setLayout(self.layout)
 
 
-class FindEventsMenu(QtGui.QMenu):
+class FindEventsMenu(QMenu):
     def __init__(self, parent):
         super(FindEventsMenu, self).__init__(parent)
 
-        self.menu_template_matching = QtGui.QMenu('Template matching', self)
+        self.menu_template_matching = QMenu('Template matching', self)
 
-        self.tm_biexponential = QtGui.QAction("Biexponential", self)
+        self.tm_biexponential = QAction("Biexponential", self)
         self.tm_biexponential.triggered.connect(self.on_tm_biexponential)
         self.menu_template_matching.addAction(self.tm_biexponential)
 
@@ -117,8 +115,6 @@ class FindEventsMenu(QtGui.QMenu):
             #     mask.events = {}
             #
             # mask.events[result.algorithm]
-
-
 
     def on_tm_biexponential(self):
         dlg = BiExpParameterDialog(self)

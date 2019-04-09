@@ -3,12 +3,12 @@ import numpy
 try:
     import cv2
 except ImportError as e:
-    print "WARNING: Importing opencv (cv2) failed."
-    print "Without opencv image stabilization is not supported."
-    print "If you are on windows you can try to install opencv with:"
-    print " conda install -c menpo opencv=2.4.11"
-    print "On linux/mac try:"
-    print " conda install opencv=2.4.11"
+    print("WARNING: Importing opencv (cv2) failed.")
+    print("Without opencv image stabilization is not supported.")
+    print("If you are on windows you can try to install opencv with:")
+    print(" conda install -c menpo opencv=2.4.11")
+    print("On linux/mac try:")
+    print(" conda install opencv=2.4.11")
     raise e
 
 
@@ -21,7 +21,8 @@ feature_params = dict(maxCorners=300,
                        minDistance=40,
                        blockSize=30)
 
-def draw_str(dst, (x, y), s):
+def draw_str(dst, xy, s):
+    (x, y) = xy
     cv2.putText(dst, s, (x+1, y+1), cv2.FONT_HERSHEY_PLAIN, .5, (0, 0, 0), thickness = 2)
     cv2.putText(dst, s, (x, y), cv2.FONT_HERSHEY_PLAIN, .5, (255, 255, 255))
 

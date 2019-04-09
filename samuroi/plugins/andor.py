@@ -42,7 +42,7 @@ def parse_txt(prefix):
                 elif len(line) == 1:
                     pass  # print "<empty>"
                 elif header:
-                    prefix = pointer['header'] if 'header' in pointer.keys() else ''
+                    prefix = pointer['header'] if 'header' in list(pointer.keys()) else ''
                     pointer['header'] = prefix + line
                 elif stack[-1] == 'Channel Description' or stack[-1] == 'Protocol Description':
                     key = stack[-1]
@@ -53,7 +53,7 @@ def parse_txt(prefix):
                 else:
                     raise Exception("Unexpected line in textfile:" + line)
     for match in framere.finditer(parsed['Protocol Description']):
-        assert (not 'Frames' in parsed.keys())
+        assert (not 'Frames' in list(parsed.keys()))
         parsed['Frames'] = int(match.group('count'))
     return parsed
 
@@ -75,6 +75,6 @@ def load_andor(prefix):
     Y = int(parsed['Grab Parameters']['Image Height'])
 
     if data.shape != (Y, X, T):
-        print "Shape of txt file doesnt match tif file"
+        print("Shape of txt file doesnt match tif file")
         raise Exception("Shape of txt file {}x{}x{} doesnt match tif file shape {}x{}x{}".format(Y, X, T, *data.shape))
     return data, parsed

@@ -1,6 +1,5 @@
-from PyQt4 import QtCore
-
-from PyQt4.QtCore import QVariant, QObject, pyqtSignal
+from PyQt5 import QtCore
+from PyQt5.QtCore import QModelIndex, QAbstractItemModel, pyqtSignal, QVariant
 
 
 class TreeItem(object):
@@ -38,7 +37,7 @@ class TreeItem(object):
         self.model.beginInsertRows(self.index, len(self), len(self) + len(children) - 1)
         self.__children.extend(children)
         self.model.endInsertRows()
-        self.model.dataChanged.emit(QtCore.QModelIndex(), QtCore.QModelIndex())
+        self.model.dataChanged.emit(QModelIndex(), QModelIndex())
         return i
 
     def remove(self, child=None, slice=None):
@@ -58,7 +57,7 @@ class TreeItem(object):
         """Get the model index of this tree item"""
         # root does have default model index
         if self.__parent is None:
-            return QtCore.QModelIndex()
+            return QModelIndex()
         else:
             return self.model.index(self.parent.row(self), 0, self.parent.index)
 
@@ -212,7 +211,7 @@ class RoiItem(TreeItem):
         return self.mask.name
 
 
-class RoiTreeModel(QtCore.QAbstractItemModel):
+class RoiTreeModel(QAbstractItemModel):
     mask_added = pyqtSignal(object)
     mask_removed = pyqtSignal(object)
 
@@ -251,7 +250,7 @@ class RoiTreeModel(QtCore.QAbstractItemModel):
             return False
         if role == QtCore.Qt.EditRole:
             name = str(value.toPyObject())
-            print name
+            print(name)
             index.internalPointer().mask.name = name
             self.dataChanged.emit(index, index)
             return True

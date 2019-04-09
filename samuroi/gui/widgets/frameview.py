@@ -1,19 +1,17 @@
-import numpy
 import types
 
 import matplotlib
-
-from PyQt4 import QtCore, QtGui
+import numpy
+from PyQt5 import QtCore
+from PyQt5.QtCore import QItemSelectionModel
+from PyQt5.QtWidgets import QWidget, QSlider, QVBoxLayout, QHBoxLayout
+from matplotlib.patches import Polygon
 
 from .canvasbase import CanvasBase
-
 from ...masks.branch import BranchMask
-from ...masks.segment import SegmentMask
 from ...masks.circle import CircleMask
-from ...masks.polygon import PolygonMask
 from ...masks.pixel import PixelMask
-
-from matplotlib.patches import Polygon
+from ...masks.polygon import PolygonMask
 
 
 class FrameViewCanvas(CanvasBase):
@@ -44,7 +42,7 @@ class FrameViewCanvas(CanvasBase):
 
         # norm = matplotlib.colors.LogNorm(.001,1.)
         x, y, t = self.segmentation.data.shape
-        vmin, vmax = numpy.nanpercentile(self.segmentation.data[..., :min(t / 10, 50)], q=[pmin, pmax])
+        vmin, vmax = numpy.nanpercentile(self.segmentation.data[..., :min(int(t / 10), 50)], q=[pmin, pmax])
         norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax, clip=True)
         self.frameimg = self.axes.imshow(self.segmentation.data[..., 0], cmap=red_alpha_cm, norm=norm,
                                          interpolation='nearest')
@@ -132,7 +130,7 @@ class FrameViewCanvas(CanvasBase):
         with self.draw_on_exit():
             for child in getattr(parent, "children", []):
                 if not hasattr(child, "color"):
-                    child.color = self.colorcycle.next()
+                    child.color = next(self.colorcycle)
                 self.create_outlined_artist(mask=child, color=child.color)
 
     def remove_child_artists(self, parent):
@@ -142,7 +140,7 @@ class FrameViewCanvas(CanvasBase):
         with self.draw_on_exit():
             # gather all former children of the changed mask in a list
             old_children = []
-            for mask, artist in self.__artists.iteritems():
+            for mask, artist in self.__artists.items():
                 # check if the mask has parent and the parent is the mask which was modified
                 if hasattr(mask, "parent") and mask.parent is parent:
                     old_children.append(mask)
@@ -195,7 +193,7 @@ class FrameViewCanvas(CanvasBase):
         # set color for all children
         for child in mask.children:
             if not hasattr(child, "color"):
-                child.color = self.colorcycle.next()
+                child.color = next(self.colorcycle)
             overlay[child.y, child.x] = conv.to_rgba(child.color)
 
         # set background pixels to opaque and foreground pixels to low alpha
@@ -224,7 +222,7 @@ class FrameViewCanvas(CanvasBase):
 
             def set_selected(self, a):
                 if a:
-                    overlay[self.mask.y,self.mask.x, 3] = .9
+                    overlay[self.mask.y, self.mask.x, 3] = .9
                 else:
                     overlay[self.mask.y, self.mask.x, 3] = segmentation_alpha
                 self.artist.set_array(overlay)
@@ -249,7 +247,7 @@ class FrameViewCanvas(CanvasBase):
             }
             func = mapping[type(mask)]
             if not hasattr(mask, "color"):
-                mask.color = self.colorcycle.next()
+                mask.color = next(self.colorcycle)
             func(mask=mask, color=mask.color)
             if hasattr(mask, "changed"):
                 mask.changed.append(self.on_mask_changed)
@@ -316,17 +314,17 @@ class FrameViewCanvas(CanvasBase):
             # if shift key is not pressed clear selection
             if not (event.guiEvent.modifiers() and QtCore.Qt.ShiftModifier):
                 self.selectionmodel.clear()
-            self.selectionmodel.select(index, QtGui.QItemSelectionModel.Select)
+            self.selectionmodel.select(index, QItemSelectionModel.Select)
 
 
-class FrameViewWidget(QtGui.QWidget):
+class FrameViewWidget(QWidget):
     def __init__(self, parent, segmentation, selectionmodel):
         super(FrameViewWidget, self).__init__(parent)
 
         self.segmentation = segmentation
 
         # create a vertical box layout widget
-        self.vbl = QtGui.QVBoxLayout()
+        self.vbl = QVBoxLayout()
 
         self.canvas = FrameViewCanvas(segmentation, selectionmodel)
         self.vbl.addWidget(self.canvas)
@@ -334,7 +332,7 @@ class FrameViewWidget(QtGui.QWidget):
         from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT
         self.toolbar_navigation = NavigationToolbar2QT(self.canvas, self, coordinates=False)
 
-        self.frame_slider = QtGui.QSlider(QtCore.Qt.Horizontal)
+        self.frame_slider = QSlider(QtCore.Qt.Horizontal)
         self.frame_slider.setMinimum(0)
         self.frame_slider.setMaximum(self.segmentation.data.shape[2] - 1)
         self.frame_slider.setTickInterval(1)
@@ -342,7 +340,7 @@ class FrameViewWidget(QtGui.QWidget):
         self.frame_slider.setPageStep(self.segmentation.data.shape[2] / 10)
         self.frame_slider.valueChanged.connect(self.on_slider_changed)
 
-        self.toollayout = QtGui.QHBoxLayout()
+        self.toollayout = QHBoxLayout()
 
         self.toollayout.addWidget(self.toolbar_navigation)
         self.toollayout.addWidget(self.frame_slider)

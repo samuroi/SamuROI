@@ -1,23 +1,24 @@
-from PyQt4 import QtGui
+from PyQt5 import QtGui
+from PyQt5.QtWidgets import QAction, QMenu
 
 from samuroi.gui.h5dialogs import H5LoadDialog, H5SaveDialog
 
 
-class FileMenu(QtGui.QMenu):
+class FileMenu(QMenu):
     def __init__(self, app, *args, **kwargs):
         super(FileMenu, self).__init__(*args, **kwargs)
 
         self.app = app
-        self.load_h5_action = QtGui.QAction('Load &hdf5 ...', None)
+        self.load_h5_action = QAction('Load &hdf5 ...', None)
         self.load_h5_action.triggered.connect(self.load_hdf5)
 
-        self.load_swc_action = QtGui.QAction('Load &swc ...', None)
+        self.load_swc_action = QAction('Load &swc ...', None)
         self.load_swc_action.triggered.connect(self.load_swc)
 
-        self.load_tiff_action = QtGui.QAction('Load &tiff ...', None)
+        self.load_tiff_action = QAction('Load &tiff ...', None)
         self.load_tiff_action.triggered.connect(self.load_tiff)
 
-        self.save_hdf5_action = QtGui.QAction('&Save hdf5 ...', None)
+        self.save_hdf5_action = QAction('&Save hdf5 ...', None)
         self.save_hdf5_action.triggered.connect(self.save_hdf5)
 
         self.setTitle("&File")
@@ -31,7 +32,7 @@ class FileMenu(QtGui.QMenu):
     def load_hdf5(self):
         dialog = H5LoadDialog(caption="Open hdf5 file...")
         if dialog.exec_():
-            print dialog.selectedFiles()[0]
+            print(dialog.selectedFiles()[0])
 
             filename = str(dialog.selectedFiles()[0])
             if '.' not in filename:
@@ -44,7 +45,7 @@ class FileMenu(QtGui.QMenu):
                                             data=dialog.chk_data.isChecked(),
                                             mask=dialog.chk_mask.isChecked())
         else:
-            print "cancel"
+            print("cancel")
 
     def load_swc(self):
         fileName = QtGui.QFileDialog.getOpenFileName(self.parent(),
@@ -68,7 +69,7 @@ class FileMenu(QtGui.QMenu):
         dialog = H5SaveDialog(caption="Save hdf5 file...")
 
         if dialog.exec_():
-            print dialog.selectedFiles()[0]
+            print(dialog.selectedFiles()[0])
 
             filename = str(dialog.selectedFiles()[0])
             if '.' not in filename:
@@ -83,7 +84,7 @@ class FileMenu(QtGui.QMenu):
                                                 traces=dialog.chk_traces.isChecked(),
                                                 mask=dialog.chk_mask.isChecked())
             except RuntimeError as e:
-                from PyQt4.QtGui import QMessageBox
+                from PyQt5.QtGui import QMessageBox
                 msg = QMessageBox()
                 msg.setWindowTitle("Saving to hdf5 failed")
                 msg.setIcon(QMessageBox.Warning)
@@ -92,4 +93,4 @@ class FileMenu(QtGui.QMenu):
                 msg.exec_()
 
         else:
-            print "cancel"
+            print("cancel")
