@@ -3,6 +3,8 @@ python:
 - '3.6'
 - '3.7'
 - nightly
+script:
+  - echo "there are no tests yet:-("
 install:
 - python setup.py sdist
 deploy:
