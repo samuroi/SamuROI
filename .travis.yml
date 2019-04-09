@@ -1,0 +1,20 @@
+language: python
+
+# versions to use for packaging and testing
+python:
+  - "3.6"
+  - "3.7"
+  - "nightly"
+
+install:
+  # build source distribution for upload to pypi
+  - python setup.py sdist
+
+deploy:
+  distributions: "sdist"
+  on:
+    tags: true
+  provider: pypi
+  user: "enigma@nbubu.de"
+  password:
+    secure:
