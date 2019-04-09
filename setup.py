@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='samuroi',
-    version='0.1',
+    version='0.2',
     license='MIT',
     description='Segmentation and Analysis of Multiple User-defined ROIs',
     author='Martin Rueckl',

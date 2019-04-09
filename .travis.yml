@@ -1,11 +1,11 @@
 language: python
-dist: xenial # required for Python >= 3.7
+dist: xenial
 python:
 - '3.6'
 - '3.7'
 - nightly
 script:
-  - echo "there are no tests yet:-("
+- echo "there are no tests yet:-("
 install:
 - python setup.py sdist
 deploy:
@@ -13,6 +13,6 @@ deploy:
   on:
     tags: true
   provider: pypi
-  user: enigma@nbubu.de
+  user: "enigma@nbubu.de"
   password:
-    secure: Pz7z0E/A35SebEiyCklAlncLBxpfNiwbcXVRCrvbx7RYtU9DIIz5uJuPiM/yVbnZ+JinPlHeSHVrJLGx8e/8ufOQYZhIPfQfO3YazOd7yz1irhu5vu2lKCbShlggfvAPoxcb84rTojZll/h3N1GXmw3mPqMm5Z60NCxvV2dd/GpOLghl4qrqZiuQHUE3OQVelO6iNei5SL2YiO2CneP7nwErGG/3Hu4I6NlP0Vfn9oxfcI7ayUJsqCYkpxbBNdkjYooK7kiSosvButKSf18S2FkMMoNtgdguYpzBnSAmp2RVas9Zw3QPaHoeWPq+gCw3Jw57V1ORNFcnFGw6xHrdLLKZE5mqSrm63GjQgR4vq7zXfZDvN0Y9NJxvno5oGx0h9LSrR8nhVMD7z/vEGgFzBpq7/LZspvJmVgWa9g2RiTNj/mdgs4m8Yie4Ys05nk7O4ZUVWVKmyF9QcsEGKdlZF9hWJtmoseWfZDEtxpDqWjoveJ9jTX8tvcQld/c54+YtdL4ZrNVtrrPhH0Q04UML2RtF4icOUKnFehNAsxpg/KMXzz615YF/ZK03toyFi5+lXJT6ha59GUiDRLR7EnPGNIrf+uEcNmMTHnGBZublefcNRAr7vQQ4JxyLupMFmoIvLQ7jMrNHRIiiA3Q8uxW21BcRjOIK5mmaoxksK+kWL90=
+    secure: "BBl1PpvoXb01DZ4iuESdpsZOcCf6LhNW2Lo6Jqlrx+fbKJIqAfciVu7CLMrAh1J8UxOUnIQS5+pBF9NQGvSBBqQha2cdcqT1LVjw4FKGDOVO21xp5o6EnMCayVD94yNs+m4ZDkGoEMp3NklfdLp7nfd9urnjVQfQcvDoU3eCrhEXkl2DF0vWIyTk4WY/A+AH6YJm1e+enjz5hWf9j81p0jJQ4t9U6EDiNfHtylZq/q5ntWqH6ZsslUqDvDitp8lPkCWOZKL0MK/1Eu+8V2zwxYLtwCOAkHCj5oPquh6PSNQRI1wJp+K066RR6xMTkYFadtimc/J7gwGN28QZ3iXKeeXXriAVdJG0/4bzE8ymEYSkg2BmJY9IiaG/LuABZZWBXno9IZxppgt8zbXhM30UtgsHF8iVYKaQg+xYbHe1AlUTCii7af8Epct8cYMua1IeQSkb62I5VMISmerqTRjqoylcfJU/8tNrJ2Y66ncFdW2WqllyVhzacXmWXYmi+WOjZakg9Me+pvRiYpC0JPHV1FhOMLokwZ01L+H5YQpZvXDjD2zObu3kuP+Lw/EThJSaQvSArZGsxpWrSjphMmZBTDdA3z3NjKW1Z97qRleSZjBtCobBYwFBzo3uxgMRDcJO4U/CDowuN2xCHJGAyw0Flly4GyY/2jlayIdgUtWJv3U="
