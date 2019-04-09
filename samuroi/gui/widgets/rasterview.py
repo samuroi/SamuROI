@@ -1,6 +1,6 @@
 import numpy
-
-from PyQt4 import QtGui
+from PyQt5.QtCore import QItemSelectionModel
+from PyQt5.QtWidgets import QDockWidget, QWidget, QHBoxLayout
 
 from .canvasbase import CanvasBase
 
@@ -130,25 +130,25 @@ class RasterViewCanvas(CanvasBase):
                 # clear selection and add the segment
                 self.selectionmodel.clear()
                 self.selectionmodel.select(model.find(self.parent_mask.children[index]),
-                                           QtGui.QItemSelectionModel.Select)
+                                           QItemSelectionModel.Select)
         if event.xdata is not None:
             self.segmentation.active_frame = event.xdata
 
 
-class RasterViewDockWidget(QtGui.QDockWidget):
+class RasterViewDockWidget(QDockWidget):
     def __init__(self, name, parent, segmentation):
         super(RasterViewDockWidget, self).__init__(name, parent)
 
         self.canvas = RasterViewCanvas(segmentation=segmentation, selectionmodel=parent.roiselectionmodel)
 
-        from PyQt4 import QtCore
+        from PyQt5 import QtCore
         from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT
         self.toolbar_navigation = NavigationToolbar2QT(self.canvas, self, coordinates=False)
         self.toolbar_navigation.setOrientation(QtCore.Qt.Vertical)
         self.toolbar_navigation.setFloatable(True)
 
-        self.widget = QtGui.QWidget()
-        self.layout = QtGui.QHBoxLayout()
+        self.widget = QWidget()
+        self.layout = QHBoxLayout()
         self.layout.addWidget(self.toolbar_navigation)
         self.layout.addWidget(self.canvas)
 

@@ -1,12 +1,13 @@
 from contextlib import contextmanager
 
-import numpy
-from PyQt4 import QtCore, QtGui
+from PyQt5 import QtCore, QtGui
+from PyQt5.QtCore import QItemSelectionModel
+from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QDockWidget
 
 from ..samuroidata import SamuROIData
 
 
-class SamuROIWindow(QtGui.QMainWindow):
+class SamuROIWindow(QMainWindow):
     """
     The main class that is doing the event handling, organizes the gui and puts together the plot.
     """
@@ -25,7 +26,7 @@ class SamuROIWindow(QtGui.QMainWindow):
         with self.frame_widget.canvas.draw_on_exit(), self.tracedockwidget.canvas.draw_on_exit(), self.linescandockwidget.canvas.draw_on_exit():
             yield
 
-    def __init__(self, data, morphology=None):
+    def __init__(self, data, morphology=None, *args, **kwargs):
         """
         Create and show the gui for data analysis.
         Args:
@@ -35,21 +36,20 @@ class SamuROIWindow(QtGui.QMainWindow):
             pmin,pmax: Percentiles for color range. I.e. the color range for mean and data will start at pmin %
                            and reach up to pmax %. Defaults to (10,99)
         """
-        QtGui.QMainWindow.__init__(self)
-
+        super().__init__(*args, **kwargs)
         self.segmentation = SamuROIData(data, morphology)
 
         # set window title
         self.setWindowTitle("SamuROI")
         # instantiate a widget, it will be the main one
-        self.setCentralWidget(QtGui.QWidget(self))
+        self.setCentralWidget(QWidget(self))
         # create a vertical box layout widget
-        self.vbl = QtGui.QVBoxLayout(self.centralWidget())
+        self.vbl = QVBoxLayout(self.centralWidget())
 
         # create itemmodel and selectionmodel for the masks
         from .roiitemmodel import RoiTreeModel
         self.roitreemodel = RoiTreeModel(rois=self.segmentation.masks, parent=self)
-        self.roiselectionmodel = QtGui.QItemSelectionModel(self.roitreemodel)
+        self.roiselectionmodel= QItemSelectionModel(self.roitreemodel)
 
         # create widget for frame
         from .widgets.frameview import FrameViewWidget
@@ -71,7 +71,7 @@ class SamuROIWindow(QtGui.QMainWindow):
         self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.tracedockwidget)
 
         from .roitree import RoiTreeWidget
-        self.roitreedockwidget = QtGui.QDockWidget("TreeView", parent=self)
+        self.roitreedockwidget = QDockWidget("TreeView", parent=self)
         self.roitreewidget = RoiTreeWidget(parent=self.roitreedockwidget, model=self.roitreemodel,
                                            selectionmodel=self.roiselectionmodel)
         self.roitreedockwidget.setWidget(self.roitreewidget)
